@@ -2,7 +2,7 @@ export type Memory = {
   id: string;
   content: string;
   createdAt: number;
-  tag?: string;
+  tags?: string[];
 };
 
 const STOPWORDS = new Set([
@@ -44,36 +44,36 @@ export const SEED_MEMORIES: Memory[] = [
     id: "m1",
     content: "Client Acme hates the color blue — use warm neutrals and cream tones on their pitch deck.",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 12,
-    tag: "clients",
+    tags: ["clients"],
   },
   {
     id: "m2",
     content: "React useEffect infinite loop fix: wrap functions in useCallback before adding them to the dependency array.",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
-    tag: "code",
+    tags: ["code"],
   },
   {
     id: "m3",
     content: "Mom's birthday is March 12 — she loves peonies, absolutely no roses.",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
-    tag: "life",
+    tags: ["life"],
   },
   {
     id: "m4",
     content: "Postgres 'too many connections' error → set pgBouncer pool_mode=transaction and lower max_client_conn.",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-    tag: "code",
+    tags: ["code"],
   },
   {
     id: "m5",
     content: "Wifi at the Nomad co-working space: network 'Nomad_Guest', password is taped to the espresso machine.",
     createdAt: Date.now() - 1000 * 60 * 60 * 48,
-    tag: "life",
+    tags: ["life"],
   },
   {
     id: "m6",
     content: "Sam from design prefers async Loom updates over live standup meetings — schedule accordingly.",
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 8,
-    tag: "team",
+    tags: ["team"],
   },
 ];

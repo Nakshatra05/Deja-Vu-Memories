@@ -6,6 +6,8 @@ import {
   searchTop,
   type Memory,
 } from "../lib/memory-store";
+import confetti from "canvas-confetti";
+import { Search, X } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -34,6 +36,9 @@ const SAMPLE_COPIES = [
 function Index() {
   const [memories, setMemories] = useState<Memory[]>(SEED_MEMORIES);
   const [thought, setThought] = useState("");
+  const [thoughtTags, setThoughtTags] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
   const [clipboard, setClipboard] = useState("");
   const [mascot, setMascot] = useState<MascotState>("idle");
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -76,17 +81,32 @@ function Index() {
   const saveThought = () => {
     const content = thought.trim();
     if (content.length < 3) return;
+    
+    const isFirstMemory = !localStorage.getItem("dejavu_has_saved_memory");
+
     setMascot("saving");
     window.setTimeout(() => {
       const m: Memory = {
         id: `m${Date.now()}`,
         content,
         createdAt: Date.now(),
-        tag: "you",
+        tags: thoughtTags.length > 0 ? thoughtTags : ["you"],
       };
       setMemories((prev) => [m, ...prev]);
       setThought("");
+      setThoughtTags([]);
       setMascot("saved");
+      
+      if (isFirstMemory) {
+        localStorage.setItem("dejavu_has_saved_memory", "true");
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          zIndex: 9999,
+        });
+      }
+
       window.setTimeout(() => setMascot("idle"), 1200);
     }, 250);
   };
@@ -98,6 +118,20 @@ function Index() {
     }),
     [memories, toasts],
   );
+
+  const filteredMemories = useMemo(() => {
+    return memories.filter((memory) => {
+      const matchesSearch = memory.content.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTags = activeTags.length === 0 || activeTags.every((tag) => memory.tags?.includes(tag));
+      return matchesSearch && matchesTags;
+    });
+  }, [memories, searchQuery, activeTags]);
+
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    memories.forEach((m) => m.tags?.forEach((t) => tags.add(t)));
+    return Array.from(tags);
+  }, [memories]);
 
   return (
     <div className="min-h-screen">
@@ -137,6 +171,8 @@ function Index() {
           <QuickAdd
             value={thought}
             onChange={setThought}
+            tags={thoughtTags}
+            onTagsChange={setThoughtTags}
             onSubmit={saveThought}
             mascotState={mascot}
           />
@@ -157,7 +193,41 @@ function Index() {
               {memories.length} saved · container <span className="font-mono lowercase">deja-vu-local-user</span>
             </span>
           </div>
-          <MemoryList memories={memories} />
+          
+          <div className="mb-6 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search memories..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background/60 pl-10 pr-4 py-2 text-sm placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </div>
+            
+            {allTags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {allTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setActiveTags(prev => 
+                      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                    )}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      activeTags.includes(tag) 
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <MemoryList memories={filteredMemories} />
         </section>
 
         <Footer />
@@ -218,18 +288,24 @@ function StatChip({ label, value, tone }: { label: string; value: number; tone?:
 /* ─────────────────────────────────────────────────────────── */
 
 function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
+  const [hovered, setHovered] = useState(false);
+
   const bubble: Record<MascotState, string> = {
-    idle: "watching",
+    idle: hovered ? "aha! 🎉" : "watching",
     listening: "listening…",
-    recall: "déjà vu!",
+    recall: hovered ? "déjà vuuuu! ✨" : "déjà vu!",
     saving: "noting…",
     saved: "saved ✓",
   };
-  const glow = state === "recall";
-  const bounce = state === "saved" || state === "recall";
+  const glow = state === "recall" || hovered;
+  const bounce = state === "saved" || state === "recall" || hovered;
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div 
+      className="relative flex flex-col items-center"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div
         className="relative flex items-center justify-center rounded-full"
         style={{
@@ -242,19 +318,22 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
           transition: "background 400ms ease",
         }}
       >
-        <img
-          src={mascotSrc}
-          alt="Déjà Vu mascot"
-          width={size}
-          height={size}
-          style={{
-            width: size * 0.92,
-            height: size * 0.92,
-            transform: bounce ? "translateY(-4px) scale(1.03)" : "translateY(0) scale(1)",
-            transition: "transform 400ms cubic-bezier(0.2,0.9,0.3,1.3)",
-            filter: glow ? "drop-shadow(0 0 18px oklch(0.85 0.15 70 / 0.75))" : "drop-shadow(0 4px 12px oklch(0.3 0.06 300 / 0.15))",
-          }}
-        />
+        <div className={hovered ? "animate-squash origin-bottom" : ""}>
+          <img
+            src={mascotSrc}
+            alt="Déjà Vu mascot"
+            width={size}
+            height={size}
+            className={state === "idle" ? "animate-float" : ""}
+            style={{
+              width: size * 0.92,
+              height: size * 0.92,
+              transform: bounce ? "translateY(-4px) scale(1.03)" : "translateY(0) scale(1)",
+              transition: "transform 400ms cubic-bezier(0.2,0.9,0.3,1.3)",
+              filter: glow ? "drop-shadow(0 0 18px oklch(0.85 0.15 70 / 0.75))" : "drop-shadow(0 4px 12px oklch(0.3 0.06 300 / 0.15))",
+            }}
+          />
+        </div>
         {state === "listening" && (
           <span
             aria-hidden
@@ -263,16 +342,34 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
           />
         )}
         {state === "recall" && (
-          <span
-            aria-hidden
-            className="absolute -right-2 -top-2 rounded-full bg-recall px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-recall-foreground"
-            style={{ animation: "rise 0.4s cubic-bezier(0.2,0.9,0.3,1.3)" }}
-          >
-            !
-          </span>
+          <>
+            <span
+              aria-hidden
+              className="absolute -right-2 -top-2 rounded-full bg-recall px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-recall-foreground"
+              style={{ animation: "rise 0.4s cubic-bezier(0.2,0.9,0.3,1.3)" }}
+            >
+              !
+            </span>
+            <span
+              aria-hidden
+              className="absolute animate-sparkle top-0 left-0 text-recall h-4 w-4"
+            >
+              ✨
+            </span>
+            <span
+              aria-hidden
+              className="absolute animate-sparkle bottom-2 right-4 text-recall h-4 w-4"
+              style={{ animationDelay: "200ms" }}
+            >
+              ✨
+            </span>
+          </>
         )}
       </div>
-      <div className="mt-2 rounded-full bg-card/80 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm backdrop-blur">
+      <div 
+        key={hovered ? "hovered" : "unhovered"}
+        className={`mt-2 rounded-full bg-card/80 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm backdrop-blur ${hovered ? "animate-pop text-foreground" : ""}`}
+      >
         {bubble[state]}
       </div>
     </div>
@@ -284,14 +381,42 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
 function QuickAdd({
   value,
   onChange,
+  tags,
+  onTagsChange,
   onSubmit,
   mascotState,
 }: {
   value: string;
   onChange: (v: string) => void;
+  tags: string[];
+  onTagsChange: (t: string[]) => void;
   onSubmit: () => void;
   mascotState: MascotState;
 }) {
+  const [tagInput, setTagInput] = useState("");
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSubmit();
+    }
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const newTag = tagInput.trim().toLowerCase();
+      if (newTag && !tags.includes(newTag)) {
+        onTagsChange([...tags, newTag]);
+      }
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    onTagsChange(tags.filter((t) => t !== tagToRemove));
+  };
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
       <div className="mb-3 flex items-center justify-between">
@@ -304,16 +429,29 @@ function QuickAdd({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSubmit();
-          }
-        }}
+        onKeyDown={handleKeyDown}
         placeholder="What's on your mind? Anything useful — a fix, a fact, a preference…"
-        rows={4}
+        rows={3}
         className="w-full resize-none rounded-lg border border-input bg-background/60 px-4 py-3 text-[15px] leading-relaxed placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
       />
+      <div className="mt-2 flex flex-wrap gap-2 items-center">
+        {tags.map((t) => (
+          <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+            {t}
+            <button onClick={() => removeTag(t)} className="hover:bg-primary/20 rounded-full p-0.5">
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          type="text"
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          onKeyDown={handleTagKeyDown}
+          placeholder="Add tags..."
+          className="flex-1 bg-transparent text-sm min-w-[80px] placeholder:text-muted-foreground/50 focus:outline-none"
+        />
+      </div>
       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
         <span>
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">⏎</kbd> to save ·{" "}
@@ -403,6 +541,14 @@ function ClipboardSimulator({
 /* ─────────────────────────────────────────────────────────── */
 
 function MemoryList({ memories }: { memories: Memory[] }) {
+  if (memories.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">
+        No memories match your search.
+      </div>
+    );
+  }
+
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {memories.map((m) => (
@@ -411,7 +557,14 @@ function MemoryList({ memories }: { memories: Memory[] }) {
           className="group rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-ring/50 hover:shadow-[var(--shadow-soft)]"
         >
           <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            <span className="rounded-full bg-muted px-2 py-0.5">{m.tag ?? "note"}</span>
+            <span className="flex gap-1">
+              {m.tags?.map((t) => (
+                <span key={t} className="rounded-full bg-muted px-2 py-0.5">{t}</span>
+              ))}
+              {(!m.tags || m.tags.length === 0) && (
+                <span className="rounded-full bg-muted px-2 py-0.5">note</span>
+              )}
+            </span>
             <span>{relTime(m.createdAt)}</span>
           </div>
           <p className="text-sm leading-relaxed text-foreground/90">{m.content}</p>
