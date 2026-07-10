@@ -4,11 +4,7 @@
 
 ### *The memory that finds you before you ask.*
 
-<img src="assets/banner.png" width="100%" alt="Déjà Vu Banner"/>
-
 **An AI-powered desktop companion that quietly remembers everything you save—and reminds you at exactly the right moment.**
-
-[Demo](#demo) • [Features](#features) • [Architecture](#architecture) • [Getting Started](#getting-started)
 
 </div>
 
@@ -237,9 +233,9 @@ deja-vu
 ## Clone
 
 ```bash
-git clone https://github.com/yourusername/deja-vu.git
+git clone https://github.com/Nakshatra05/deja-vu-memories.git
 
-cd deja-vu
+cd deja-vu-memories
 ```
 
 ---
