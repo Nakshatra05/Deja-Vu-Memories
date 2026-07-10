@@ -1,0 +1,125 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-recall: var(--recall);
+  --color-recall-foreground: var(--recall-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --shadow-soft: 0 1px 2px oklch(0.3 0.06 300 / 0.06), 0 8px 24px oklch(0.3 0.06 300 / 0.08);
+  --shadow-glow: 0 0 0 1px var(--recall), 0 8px 32px oklch(0.78 0.15 70 / 0.35);
+
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  --animate-blink: blink 4s ease-in-out infinite;
+  --animate-rise: rise 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Warm dusk palette */
+  --background: oklch(0.975 0.012 80);
+  --foreground: oklch(0.24 0.06 300);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.06 300);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.06 300);
+
+  /* Deep dusk purple */
+  --primary: oklch(0.32 0.08 295);
+  --primary-foreground: oklch(0.98 0.012 80);
+
+  --secondary: oklch(0.93 0.02 300);
+  --secondary-foreground: oklch(0.32 0.08 295);
+
+  --muted: oklch(0.94 0.014 80);
+  --muted-foreground: oklch(0.5 0.04 295);
+
+  --accent: oklch(0.9 0.04 300);
+  --accent-foreground: oklch(0.32 0.08 295);
+
+  /* THE recall color — warm amber glow */
+  --recall: oklch(0.78 0.15 70);
+  --recall-foreground: oklch(0.24 0.08 60);
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.98 0.012 80);
+
+  --border: oklch(0.9 0.02 300);
+  --input: oklch(0.92 0.02 300);
+  --ring: oklch(0.78 0.15 70);
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+@keyframes rise {
+  0% { opacity: 0; transform: translateY(12px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes glow-ring {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.78 0.15 70 / 0.5); }
+  50% { box-shadow: 0 0 0 12px oklch(0.78 0.15 70 / 0); }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility glow-recall {
+  animation: glow-ring 1.6s ease-out;
+}
