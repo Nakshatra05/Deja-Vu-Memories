@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import mascotSrc from "../assets/mascot.png";
 import {
-  SEED_MEMORIES,
   searchTop,
   type Memory,
 } from "../lib/memory-store";
 import confetti from "canvas-confetti";
 import { Search, X } from "lucide-react";
+import { useMemories } from "../hooks/use-memories";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -34,7 +34,7 @@ const SAMPLE_COPIES = [
 ];
 
 function Index() {
-  const [memories, setMemories] = useState<Memory[]>(SEED_MEMORIES);
+  const { memories, addMemory, updateMemory, deleteMemory } = useMemories();
   const [thought, setThought] = useState("");
   const [thoughtTags, setThoughtTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,7 +47,6 @@ function Index() {
   const debounceRef = useRef<number | null>(null);
   const toastIdRef = useRef(0);
 
-  // Simulated clipboard watcher — debounces user input, then runs a match.
   useEffect(() => {
     if (!watching) return;
     const value = clipboard.trim();
@@ -81,22 +80,16 @@ function Index() {
   const saveThought = () => {
     const content = thought.trim();
     if (content.length < 3) return;
-    
+
     const isFirstMemory = !localStorage.getItem("dejavu_has_saved_memory");
 
     setMascot("saving");
-    window.setTimeout(() => {
-      const m: Memory = {
-        id: `m${Date.now()}`,
-        content,
-        createdAt: Date.now(),
-        tags: thoughtTags.length > 0 ? thoughtTags : ["you"],
-      };
-      setMemories((prev) => [m, ...prev]);
+    window.setTimeout(async () => {
+      await addMemory(content, thoughtTags.length > 0 ? thoughtTags : ["you"]);
       setThought("");
       setThoughtTags([]);
       setMascot("saved");
-      
+
       if (isFirstMemory) {
         localStorage.setItem("dejavu_has_saved_memory", "true");
         confetti({
@@ -135,7 +128,6 @@ function Index() {
 
   return (
     <div className="min-h-screen">
-      {/* Ambient background wash */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
@@ -148,7 +140,6 @@ function Index() {
       <Header count={stats.count} recalls={stats.recalls} watching={watching} onToggle={() => setWatching((w) => !w)} />
 
       <main className="mx-auto max-w-6xl px-6 pb-24 pt-6">
-        {/* Hero */}
         <section className="mb-14 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -166,7 +157,6 @@ function Index() {
           <Mascot state={mascot} size={160} />
         </section>
 
-        {/* Workspace */}
         <section className="grid gap-6 lg:grid-cols-2">
           <QuickAdd
             value={thought}
@@ -185,7 +175,6 @@ function Index() {
           />
         </section>
 
-        {/* Memory list */}
         <section className="mt-10">
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="font-display text-2xl">Your memories</h2>
@@ -193,7 +182,7 @@ function Index() {
               {memories.length} saved · container <span className="font-mono lowercase">deja-vu-local-user</span>
             </span>
           </div>
-          
+
           <div className="mb-6 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -205,18 +194,18 @@ function Index() {
                 className="w-full rounded-lg border border-input bg-background/60 pl-10 pr-4 py-2 text-sm placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </div>
-            
+
             {allTags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {allTags.map(tag => (
                   <button
                     key={tag}
-                    onClick={() => setActiveTags(prev => 
+                    onClick={() => setActiveTags(prev =>
                       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
                     )}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      activeTags.includes(tag) 
-                        ? "bg-primary text-primary-foreground" 
+                      activeTags.includes(tag)
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
@@ -227,13 +216,12 @@ function Index() {
             )}
           </div>
 
-          <MemoryList memories={filteredMemories} />
+          <MemoryList memories={filteredMemories} onUpdate={updateMemory} onDelete={deleteMemory} />
         </section>
 
         <Footer />
       </main>
 
-      {/* Toast stack */}
       <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(92vw,360px)] flex-col gap-3">
         {toasts.map((t) => (
           <RecallToast key={t.id} toast={t} onDismiss={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} />
@@ -241,7 +229,6 @@ function Index() {
       </div>
     </div>
   );
-
 }
 
 /* ─────────────────────────────────────────────────────────── */
@@ -301,7 +288,7 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
   const bounce = state === "saved" || state === "recall" || hovered;
 
   return (
-    <div 
+    <div
       className="relative flex flex-col items-center"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -366,7 +353,7 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
           </>
         )}
       </div>
-      <div 
+      <div
         key={hovered ? "hovered" : "unhovered"}
         className={`mt-2 rounded-full bg-card/80 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm backdrop-blur ${hovered ? "animate-pop text-foreground" : ""}`}
       >
@@ -540,7 +527,15 @@ function ClipboardSimulator({
 
 /* ─────────────────────────────────────────────────────────── */
 
-function MemoryList({ memories }: { memories: Memory[] }) {
+function MemoryList({
+  memories,
+  onUpdate,
+  onDelete,
+}: {
+  memories: Memory[];
+  onUpdate: (id: string, updates: Partial<Pick<Memory, "content" | "tags">>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
   if (memories.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">
@@ -548,29 +543,132 @@ function MemoryList({ memories }: { memories: Memory[] }) {
       </div>
     );
   }
-
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {memories.map((m) => (
-        <li
-          key={m.id}
-          className="group rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-ring/50 hover:shadow-[var(--shadow-soft)]"
-        >
-          <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            <span className="flex gap-1">
-              {m.tags?.map((t) => (
-                <span key={t} className="rounded-full bg-muted px-2 py-0.5">{t}</span>
-              ))}
-              {(!m.tags || m.tags.length === 0) && (
-                <span className="rounded-full bg-muted px-2 py-0.5">note</span>
-              )}
-            </span>
-            <span>{relTime(m.createdAt)}</span>
-          </div>
-          <p className="text-sm leading-relaxed text-foreground/90">{m.content}</p>
-        </li>
+        <MemoryCard key={m.id} memory={m} onUpdate={onUpdate} onDelete={onDelete} />
       ))}
     </ul>
+  );
+}
+
+function MemoryCard({
+  memory,
+  onUpdate,
+  onDelete,
+}: {
+  memory: Memory;
+  onUpdate: (id: string, updates: Partial<Pick<Memory, "content" | "tags">>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(memory.content);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    const content = draft.trim();
+    if (content.length < 3 || content === memory.content) {
+      setEditing(false);
+      setDraft(memory.content);
+      return;
+    }
+    setBusy(true);
+    await onUpdate(memory.id, { content });
+    setBusy(false);
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setDraft(memory.content);
+    setEditing(false);
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    await onDelete(memory.id);
+  };
+
+  return (
+    <li className="group relative rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-ring/50 hover:shadow-[var(--shadow-soft)]">
+      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="flex gap-1">
+          {memory.tags && memory.tags.length > 0 ? (
+            memory.tags.map((t) => (
+              <span key={t} className="rounded-full bg-muted px-2 py-0.5">
+                {t}
+              </span>
+            ))
+          ) : (
+            <span className="rounded-full bg-muted px-2 py-0.5">note</span>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          <span>{relTime(memory.createdAt)}</span>
+          {!editing && (
+            <span className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+              <button
+                onClick={() => setEditing(true)}
+                disabled={busy}
+                aria-label="Edit memory"
+                className="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+              <button
+                onClick={remove}
+                disabled={busy}
+                aria-label="Delete memory"
+                className="rounded-full p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                </svg>
+              </button>
+            </span>
+          )}
+        </span>
+      </div>
+
+      {editing ? (
+        <div>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                save();
+              }
+              if (e.key === "Escape") cancel();
+            }}
+            autoFocus
+            rows={3}
+            className="w-full resize-none rounded-lg border border-input bg-background/60 px-3 py-2 text-sm leading-relaxed focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              onClick={cancel}
+              disabled={busy}
+              className="rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              disabled={busy || draft.trim().length < 3}
+              className="rounded-full bg-primary px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition hover:opacity-90 disabled:opacity-30"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm leading-relaxed text-foreground/90">{memory.content}</p>
+      )}
+    </li>
   );
 }
 
@@ -604,7 +702,7 @@ function RecallToast({ toast, onDismiss }: { toast: Toast; onDismiss: () => void
           </div>
           <p className="text-sm leading-snug text-foreground">{toast.memory.content}</p>
           <p className="mt-1 truncate text-[11px] text-muted-foreground">
-            triggered by: <span className="font-mono">“{toast.query}”</span>
+            triggered by: <span className="font-mono">"{toast.query}"</span>
           </p>
         </div>
         <button
