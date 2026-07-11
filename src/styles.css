@@ -37,9 +37,6 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --shadow-soft: 0 1px 2px oklch(0.3 0.06 300 / 0.06), 0 8px 24px oklch(0.3 0.06 300 / 0.08);
-  --shadow-glow: 0 0 0 1px var(--recall), 0 8px 32px oklch(0.78 0.15 70 / 0.35);
-
   --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
   --animate-blink: blink 4s ease-in-out infinite;
   --animate-rise: rise 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2);
@@ -52,7 +49,7 @@
 :root {
   --radius: 0.75rem;
 
-  /* Warm dusk palette */
+  /* Warm dusk palette — light */
   --background: oklch(0.975 0.012 80);
   --foreground: oklch(0.24 0.06 300);
 
@@ -61,7 +58,6 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.06 300);
 
-  /* Deep dusk purple */
   --primary: oklch(0.32 0.08 295);
   --primary-foreground: oklch(0.98 0.012 80);
 
@@ -74,7 +70,6 @@
   --accent: oklch(0.9 0.04 300);
   --accent-foreground: oklch(0.32 0.08 295);
 
-  /* THE recall color — warm amber glow */
   --recall: oklch(0.78 0.15 70);
   --recall-foreground: oklch(0.24 0.08 60);
 
@@ -84,6 +79,48 @@
   --border: oklch(0.9 0.02 300);
   --input: oklch(0.92 0.02 300);
   --ring: oklch(0.78 0.15 70);
+
+  --shadow-soft: 0 1px 2px oklch(0.3 0.06 300 / 0.06), 0 8px 24px oklch(0.3 0.06 300 / 0.08);
+  --shadow-glow: 0 0 0 1px var(--recall), 0 8px 32px oklch(0.78 0.15 70 / 0.35);
+}
+
+.dark {
+  --background: oklch(0.14 0.015 280);
+  --foreground: oklch(0.93 0.01 80);
+
+  --card: oklch(0.18 0.015 280);
+  --card-foreground: oklch(0.93 0.01 80);
+  --popover: oklch(0.18 0.015 280);
+  --popover-foreground: oklch(0.93 0.01 80);
+
+  --primary: oklch(0.78 0.12 70);
+  --primary-foreground: oklch(0.14 0.04 60);
+
+  --secondary: oklch(0.22 0.02 280);
+  --secondary-foreground: oklch(0.88 0.02 80);
+
+  --muted: oklch(0.20 0.015 280);
+  --muted-foreground: oklch(0.58 0.03 280);
+
+  --accent: oklch(0.24 0.02 280);
+  --accent-foreground: oklch(0.90 0.02 80);
+
+  --recall: oklch(0.78 0.15 70);
+  --recall-foreground: oklch(0.20 0.08 60);
+
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.93 0.01 80);
+
+  --border: oklch(0.26 0.015 280);
+  --input: oklch(0.23 0.015 280);
+  --ring: oklch(0.78 0.15 70);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.4);
+  --shadow-glow: 0 0 0 1px var(--recall), 0 8px 32px oklch(0.78 0.15 70 / 0.2);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 @keyframes pulse-soft {
@@ -131,7 +168,6 @@
   100% { transform: scale(1, 1); }
 }
 
-
 @layer base {
   * {
     border-color: var(--color-border);
@@ -168,4 +204,16 @@
 
 @utility animate-squash {
   animation: var(--animate-squash);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }
