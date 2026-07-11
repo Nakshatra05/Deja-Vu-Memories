@@ -43,6 +43,10 @@
   --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
   --animate-blink: blink 4s ease-in-out infinite;
   --animate-rise: rise 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-sparkle: sparkle 1s ease-in-out;
+  --animate-pop: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-squash: squash 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 :root {
@@ -102,6 +106,32 @@
   50% { box-shadow: 0 0 0 12px oklch(0.78 0.15 70 / 0); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes sparkle {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes squash {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(1.15, 0.85); }
+  50% { transform: scale(0.9, 1.1); }
+  75% { transform: scale(1.05, 0.95); }
+  100% { transform: scale(1, 1); }
+}
+
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -122,4 +152,20 @@
 
 @utility glow-recall {
   animation: glow-ring 1.6s ease-out;
+}
+
+@utility animate-float {
+  animation: var(--animate-float);
+}
+
+@utility animate-sparkle {
+  animation: var(--animate-sparkle);
+}
+
+@utility animate-pop {
+  animation: var(--animate-pop);
+}
+
+@utility animate-squash {
+  animation: var(--animate-squash);
 }
