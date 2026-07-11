@@ -217,3 +217,60 @@ html {
     scroll-behavior: auto;
   }
 }
+
+@keyframes text-light-wave {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -50% center;
+  }
+}
+
+.text-wave-hover {
+  background-image: linear-gradient(
+    110deg,
+    var(--color-foreground) 40%,
+    oklch(0.6 0.05 280) 50%,
+    var(--color-foreground) 60%
+  );
+  background-size: 250% auto;
+  background-position: 200% center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: var(--color-foreground);
+  transition: color 0.3s ease;
+}
+
+.dark .text-wave-hover {
+  background-image: linear-gradient(
+    110deg,
+    var(--color-foreground) 40%,
+    #ffffff 50%,
+    var(--color-foreground) 60%
+  );
+}
+
+.text-wave-hover:hover {
+  color: transparent;
+  animation: text-light-wave 2s linear infinite;
+}
+
+.text-wave-hover em {
+  transition: color 0.3s ease;
+}
+
+.text-wave-hover:hover em {
+  color: transparent !important;
+  background-image: linear-gradient(
+    110deg,
+    var(--color-recall) 40%,
+    oklch(0.9 0.15 80) 50%,
+    var(--color-recall) 60%
+  );
+  background-size: 250% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: text-light-wave 2s linear infinite;
+}
+

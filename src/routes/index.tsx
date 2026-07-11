@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import mascotSrc from "../assets/mascot.png";
 import { searchTop, type Memory } from "../lib/memory-store";
 import confetti from "canvas-confetti";
+import { toast } from "sonner";
 import {
   Search, X, Moon, Sun, Github, Brain, Zap, Tag, Flame,
   ShieldCheck, Sparkles, Tags, Plus, Eye, EyeOff,
@@ -77,6 +78,8 @@ function Index() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const debounceRef = useRef<number | null>(null);
   const toastIdRef = useRef(0);
+  const typingDebounceRef = useRef<number | null>(null);
+  const lastSimilarNotifyRef = useRef("");
 
   useEffect(() => {
     if (!watching) return;
@@ -133,6 +136,10 @@ function Index() {
       setThoughtTags([]);
       setMascot("saved");
 
+      toast.success("Memory saved!", {
+        description: content.length > 60 ? content.slice(0, 60) + "…" : content,
+      });
+
       if (isFirstMemory) {
         localStorage.setItem("dejavu_has_saved_memory", "true");
         confetti({
@@ -145,6 +152,24 @@ function Index() {
 
       window.setTimeout(() => setMascot("idle"), 1200);
     }, 250);
+  };
+
+  // Similarity check while typing (non-blocking)
+  const handleThoughtChange = (value: string) => {
+    setThought(value);
+    if (typingDebounceRef.current) window.clearTimeout(typingDebounceRef.current);
+    const trimmed = value.trim();
+    if (trimmed.length < 8 || memories.length === 0) return;
+    typingDebounceRef.current = window.setTimeout(() => {
+      const best = searchTop(memories, trimmed);
+      if (best && best.score >= RECALL_THRESHOLD && best.memory.content !== lastSimilarNotifyRef.current) {
+        lastSimilarNotifyRef.current = best.memory.content;
+        toast.info("Similar memory exists", {
+          description: best.memory.content.length > 80 ? best.memory.content.slice(0, 80) + "…" : best.memory.content,
+          duration: 4000,
+        });
+      }
+    }, 800);
   };
 
   const recalls = toastIdRef.current;
@@ -189,7 +214,7 @@ function Index() {
               <span className="h-1.5 w-1.5 rounded-full bg-recall" />
               Your personal memory assistant
             </p>
-            <h1 className="font-display text-4xl leading-[1.05] md:text-6xl">
+            <h1 className="font-display text-4xl leading-[1.05] md:text-6xl text-wave-hover cursor-default">
               The memory that{" "}
               <em className="not-italic text-recall-foreground/80" style={{ color: "oklch(0.55 0.14 60)" }}>
                 finds you
@@ -211,7 +236,7 @@ function Index() {
         <section className="mt-10 mx-auto max-w-2xl" id="quick-add">
           <QuickAdd
             value={thought}
-            onChange={setThought}
+            onChange={handleThoughtChange}
             tags={thoughtTags}
             onTagsChange={setThoughtTags}
             onSubmit={saveThought}
@@ -370,6 +395,12 @@ function NavBar({
               {link.label}
             </a>
           ))}
+          <Link
+            to="/memories"
+            className="rounded-full px-5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            All Memories
+          </Link>
         </div>
 
         {/* ── Right: Actions ── */}
@@ -418,23 +449,23 @@ function BrainStats({ memories, recalls }: { memories: Memory[]; recalls: number
   }, [memories]);
 
   const stats = [
-    { icon: Brain, label: "Memories", value: memories.length, color: "text-primary" },
-    { icon: Zap, label: "Recalls", value: recalls, color: "text-[oklch(0.55_0.14_60)]" },
-    { icon: Tag, label: "Top tag", value: topTag, color: "text-muted-foreground" },
-    { icon: Flame, label: "Streak", value: "1 day", color: "text-recall" },
+    { icon: Brain, label: "Memories", value: memories.length, gradient: "from-primary/20 to-primary/5", iconColor: "text-primary", borderGlow: "hover:border-primary/40" },
+    { icon: Zap, label: "Recalls", value: recalls, gradient: "from-recall/20 to-recall/5", iconColor: "text-[oklch(0.55_0.14_60)]", borderGlow: "hover:border-recall/40" },
+    { icon: Tag, label: "Top tag", value: topTag, gradient: "from-muted-foreground/10 to-transparent", iconColor: "text-muted-foreground", borderGlow: "hover:border-muted-foreground/30" },
+    { icon: Flame, label: "Streak", value: "1 day", gradient: "from-recall/15 to-recall/5", iconColor: "text-recall", borderGlow: "hover:border-recall/30" },
   ];
 
   return (
     <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {stats.map((s) => (
-        <Card key={s.label} className="bg-card/60 backdrop-blur">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className={cn("rounded-lg bg-muted p-2", s.color)}>
-              <s.icon className="h-5 w-5" />
+        <Card key={s.label} className={cn("group bg-card/70 backdrop-blur-md border-border/50 transition-all duration-300 hover:shadow-sm hover:-translate-y-px", s.borderGlow)}>
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className={cn("rounded-xl bg-gradient-to-br p-2.5 transition-transform duration-300 group-hover:scale-105", s.gradient)}>
+              <s.icon className={cn("h-5 w-5", s.iconColor)} />
             </div>
             <div>
-              <div className="font-display text-2xl font-semibold tabular-nums">{s.value}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+              <div className="font-display text-2xl font-semibold tabular-nums leading-none">{s.value}</div>
+              <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
             </div>
           </CardContent>
         </Card>
@@ -585,64 +616,101 @@ function QuickAdd({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Quick save</div>
-          <h3 className="font-display text-xl">Save a thought</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onToggleWatch}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-          >
-            <span
-              className={cn("h-2 w-2 rounded-full", watching ? "bg-recall" : "bg-muted-foreground/50")}
-              style={watching ? { animation: "pulse-soft 2.4s ease-in-out infinite" } : undefined}
-            />
-            {watching ? "Watching" : "Paused"}
-          </button>
-          <Mascot state={mascotState === "saving" || mascotState === "saved" ? mascotState : "saving"} size={56} />
-        </div>
-      </div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="What's on your mind? Anything useful — a fix, a fact, a preference..."
-        rows={3}
-        className="w-full resize-none rounded-lg border border-input bg-background/60 px-4 py-3 text-[15px] leading-relaxed placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+    <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/80 backdrop-blur-md shadow-[var(--shadow-soft)]">
+      {/* Decorative gradient strip at top */}
+      <div
+        className="h-1.5 w-full"
+        style={{
+          background: "linear-gradient(90deg, var(--color-primary), var(--color-recall), var(--color-primary))",
+          backgroundSize: "200% auto",
+          animation: watching ? "text-light-wave 4s linear infinite" : "none",
+          opacity: watching ? 1 : 0.3,
+          transition: "opacity 0.4s ease",
+        }}
       />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {tags.map((t) => (
-          <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-            {t}
-            <button onClick={() => removeTag(t)} className="rounded-full p-0.5 hover:bg-primary/20">
-              <X className="h-3 w-3" />
+
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display text-xl leading-tight">Save a thought</h3>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Quick save · stored locally</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onToggleWatch}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium transition-all duration-300",
+                watching
+                  ? "border border-recall/30 bg-recall/10 text-recall-foreground shadow-sm"
+                  : "border border-border bg-muted/50 text-muted-foreground",
+              )}
+            >
+              <span
+                className={cn("h-2 w-2 rounded-full transition-colors", watching ? "bg-recall" : "bg-muted-foreground/50")}
+                style={watching ? { animation: "pulse-soft 2.4s ease-in-out infinite" } : undefined}
+              />
+              {watching ? (
+                <><Eye className="h-3.5 w-3.5" /> Watching</>
+              ) : (
+                <><EyeOff className="h-3.5 w-3.5" /> Paused</>
+              )}
             </button>
-          </span>
-        ))}
-        <input
-          type="text"
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyDown={handleTagKeyDown}
-          placeholder="Add tags..."
-          className="min-w-[80px] flex-1 bg-transparent text-sm placeholder:text-muted-foreground/50 focus:outline-none"
+            <Mascot state={mascotState === "saving" || mascotState === "saved" ? mascotState : "saving"} size={52} />
+          </div>
+        </div>
+
+        {/* Textarea */}
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="What's on your mind? Anything useful — a fix, a fact, a preference..."
+          rows={3}
+          className="w-full resize-none rounded-xl border border-input/60 bg-background/50 px-4 py-3.5 text-[15px] leading-relaxed placeholder:text-muted-foreground/50 focus:border-ring focus:bg-background/80 focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all duration-200"
         />
-      </div>
-      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> to save ·{" "}
-          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> newline
-        </span>
-        <button
-          onClick={onSubmit}
-          disabled={value.trim().length < 3}
-          className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition hover:opacity-90 disabled:opacity-30"
-        >
-          Save
-        </button>
+
+        {/* Tags */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Tags className="h-3.5 w-3.5 text-muted-foreground/60" />
+          {tags.map((t) => (
+            <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+              {t}
+              <button onClick={() => removeTag(t)} className="rounded-full p-0.5 hover:bg-primary/20 transition-colors">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            placeholder="Add tags..."
+            className="min-w-[80px] flex-1 bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none"
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
+          <span className="text-xs text-muted-foreground/70">
+            <kbd className="rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> to save ·{" "}
+            <kbd className="rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> newline
+          </span>
+          <button
+            onClick={onSubmit}
+            disabled={value.trim().length < 3}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:opacity-90 active:scale-[0.97] disabled:opacity-30 disabled:shadow-none"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );
