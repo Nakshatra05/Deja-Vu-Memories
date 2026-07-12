@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+gsap.registerPlugin(ScrollTrigger);
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   motion,
@@ -468,34 +471,38 @@ function Index() {
           />
 
           {/* ── Your Memories ────────────────────────────────── */}
-          <section className="mt-16 md:mt-24" id="memories">
-            <div className="mb-6 flex flex-col md:flex-row md:items-baseline justify-between gap-2">
-              <h2 className="text-section-heading" style={{ color: "var(--text)" }}>
+          <section className="mt-24 md:mt-40 mb-8 max-w-[1400px] mx-auto px-4 md:px-8" id="memories">
+            <div className="mb-12">
+              <h2 className="text-5xl md:text-[6rem] font-black tracking-tight leading-none mb-6" style={{ color: "var(--text)", letterSpacing: "-0.04em" }}>
                 Your memories
               </h2>
-              <span className="text-micro-label" style={{ color: "var(--text-muted)" }}>
-                {memories.length} saved · Stored locally on this device
-              </span>
+              <p className="text-lg md:text-xl font-medium tracking-wide" style={{ color: "var(--text-muted)" }}>
+                <span className="text-white">{memories.length}</span> SAVED · STORED LOCALLY ON THIS DEVICE
+              </p>
             </div>
 
-            <div className="mb-6 space-y-4">
-              <div className="relative">
+            <div className="mb-12 space-y-6 max-w-3xl">
+              <div className="relative group">
                 <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4"
-                  style={{ color: "var(--text-muted)" }}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 transition-colors duration-300"
+                  style={{ color: "var(--accent-orange)" }}
                 />
                 <input
                   type="text"
                   placeholder="Search memories..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="dv-input pl-11"
-                  style={{ borderRadius: 999 }}
+                  className="w-full bg-[#0a0a0a] hover:bg-[#111] focus:bg-[#111] border focus:border-orange-500/50 outline-none transition-all duration-300 py-6 pl-16 pr-8 text-xl font-medium placeholder:text-neutral-600 rounded-3xl"
+                  style={{ 
+                    color: "var(--text)", 
+                    borderColor: "var(--border)",
+                    boxShadow: "inset 0 4px 10px rgba(0,0,0,0.5)"
+                  }}
                 />
               </div>
 
               {allTags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   {allTags.map((tag) => (
                     <button
                       key={tag}
@@ -1325,6 +1332,9 @@ function HowItWorks({
   lastCheck: { query: string; score: number; matched: boolean } | null;
   onSample: (s: string) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
   const steps = [
     {
       num: "01",
@@ -1425,58 +1435,145 @@ function HowItWorks({
     },
   ];
 
+  useEffect(() => {
+    // Only run on client
+    if (typeof window === 'undefined') return;
+
+    let ctx = gsap.context(() => {
+      const texts = gsap.utils.toArray<HTMLElement>('.hiw-text-step');
+      const visuals = gsap.utils.toArray<HTMLElement>('.hiw-visual-step');
+      if (texts.length === 0 || visuals.length === 0) return;
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top 10%", 
+          end: "+=300%",
+          pin: true,
+          scrub: 1,
+        }
+      });
+
+      // Progress bar animation
+      tl.to(progressBarRef.current, {
+        scaleX: 1,
+        ease: "none",
+        duration: steps.length - 1
+      }, 0);
+
+      // Setup initial states: hide text blocks 2 and 3, hide visual cards 2 and 3
+      gsap.set(texts.slice(1), { autoAlpha: 0, y: 30 });
+      gsap.set(visuals.slice(1), { yPercent: 100 });
+
+      // First step animation on entering the section
+      const firstTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top 60%",
+          toggleActions: "play none none none"
+        }
+      });
+      const firstNum = texts[0].querySelector('.hiw-num');
+      const firstTitle = texts[0].querySelector('.hiw-title');
+      const firstDesc = texts[0].querySelector('.hiw-desc');
+      const firstGlow = texts[0].querySelector('.hiw-glow-line');
+      
+      firstTl.fromTo(firstNum, { filter: "blur(12px)", scale: 1.2, opacity: 0 }, { filter: "blur(0px)", scale: 1, opacity: 0.08, duration: 0.7, ease: "power2.out" }, 0)
+             .fromTo(firstTitle, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.2)
+             .fromTo(firstDesc, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.3)
+             .fromTo(firstGlow, { scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1, duration: 0.6, ease: "power2.out" }, 0.2)
+             .fromTo(visuals[0], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.4);
+
+      // Scrub animations for scrolling through the steps
+      steps.forEach((step, i) => {
+        if (i === 0) return; // already visible initially
+        
+        // Timeline offset for this step
+        const offset = i - 1;
+        
+        // 1. Fade out previous text
+        tl.to(texts[i - 1], { autoAlpha: 0, y: -30, duration: 0.4, ease: "power1.inOut" }, offset);
+        
+        // 2. Slide up next visual card on the right
+        tl.to(visuals[i], { yPercent: 0, ease: "power2.inOut", duration: 1 }, offset);
+        
+        // 3. Fade in next text
+        const num = texts[i].querySelector('.hiw-num');
+        const title = texts[i].querySelector('.hiw-title');
+        const desc = texts[i].querySelector('.hiw-desc');
+        const glow = texts[i].querySelector('.hiw-glow-line');
+        
+        const stepTl = gsap.timeline();
+        stepTl.fromTo(num, { filter: "blur(12px)", scale: 1.2, opacity: 0 }, { filter: "blur(0px)", scale: 1, opacity: 0.08, duration: 0.5, ease: "power2.out" }, 0)
+              .fromTo(title, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.1)
+              .fromTo(desc, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.2)
+              .fromTo(glow, { scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1, duration: 0.5, ease: "power2.out" }, 0.1);
+              
+        tl.to(texts[i], { autoAlpha: 1, y: 0, duration: 0.4, ease: "power1.out" }, offset + 0.4);
+        tl.add(stepTl, offset + 0.4);
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <section id="how-it-works" className="mt-24">
+    <section id="how-it-works" className="mt-24 mb-24 relative z-10">
       <ScrollReveal>
-        <div className="mb-14 text-center">
-          <p className="text-ui-label mb-3" style={{ color: "var(--text-muted)" }}>
+        <div className="mb-16 text-center">
+          <h2 className="text-5xl md:text-[5.5rem] font-black tracking-tight leading-none mb-6" style={{ color: "var(--text)", letterSpacing: "-0.04em" }}>
             How it works
-          </p>
-          <h2 className="text-section-heading md:text-[32px]" style={{ color: "var(--text)" }}>
-            Two loops, zero friction
           </h2>
+          <p className="text-lg md:text-xl font-bold tracking-[0.2em] uppercase" style={{ color: "var(--accent-orange)" }}>
+            Two loops, zero friction
+          </p>
         </div>
       </ScrollReveal>
-      <div className="space-y-24">
-        {steps.map((step, i) => (
-          <ScrollReveal key={step.num} delay={i * 0.12} scale={0.97}>
-            <div
-              className={cn(
-                "grid items-center gap-10 md:grid-cols-2",
-                i % 2 === 1 && "md:[direction:rtl] md:[&>*]:[direction:ltr]",
-              )}
-            >
-              <div>
-                <span
-                  className="block text-6xl font-bold"
-                  style={{
-                    color: "var(--text)",
-                    opacity: 0.08,
-                    letterSpacing: "-0.04em",
-                    lineHeight: 1,
-                  }}
-                >
-                  {step.num}
-                </span>
-                <h3 className="mt-3 text-section-heading" style={{ color: "var(--text)" }}>
-                  {step.title}
-                </h3>
-                <p
-                  className="mt-3 text-card-body leading-relaxed"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {step.description}
-                </p>
+
+      <div ref={containerRef} className="hiw-pinned mx-auto max-w-7xl rounded-3xl border border-border overflow-hidden" style={{ background: 'var(--card)', boxShadow: 'var(--shadow-soft)'}}>
+        <div className="hiw-progress-container">
+          <div ref={progressBarRef} className="hiw-progress-bar" />
+        </div>
+
+        <div className="grid md:grid-cols-2 h-[80vh] min-h-[500px]">
+          {/* Left Column: Text Stack */}
+          <div className="relative h-full flex flex-col justify-center px-6 md:px-12 border-r border-border/50">
+            {steps.map((step, i) => (
+              <div key={step.num} className="hiw-text-step absolute left-6 md:left-12 right-6 md:right-12">
+                <div className="relative pl-8">
+                  <div className="hiw-glow-line" />
+                  <span
+                    className="hiw-num block text-7xl md:text-8xl font-bold"
+                    style={{ color: "var(--text)", opacity: 0, letterSpacing: "-0.04em", lineHeight: 1 }}
+                  >
+                    {step.num}
+                  </span>
+                  <h3 className="hiw-title mt-3 text-section-heading" style={{ color: "var(--text)" }}>
+                    {step.title}
+                  </h3>
+                  <p className="hiw-desc mt-3 text-card-body leading-relaxed max-w-sm" style={{ color: "var(--text-muted)" }}>
+                    {step.description}
+                  </p>
+                </div>
               </div>
-              <div>{step.visual}</div>
-            </div>
-          </ScrollReveal>
-        ))}
+            ))}
+          </div>
+
+          {/* Right Column: Visual Stack */}
+          <div className="relative h-full overflow-hidden" style={{ background: 'var(--surface-raised)'}}>
+            {steps.map((step, i) => (
+              <div key={step.num} className="hiw-visual-step absolute inset-0 flex items-center justify-center p-8" style={{ background: 'var(--surface)'}}>
+                <div className="perspective-1000 w-full max-w-md">
+                  {step.visual}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
 }
-
 /* ─── ClipboardSimulator / Try-It (§7.6) ──────────────────── */
 
 function ClipboardSimulator({
@@ -1568,6 +1665,34 @@ function ClipboardSimulator({
 
 /* ─── Memory List + Card (§7.8) ───────────────────────────── */
 
+function MemoryCoreIntro() {
+  return (
+    <li className="relative shrink-0 flex items-center justify-center z-10" style={{ width: '800px', height: '400px' }}>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* Connecting Laser Line */}
+        <div className="absolute right-0 top-1/2 w-1/2 h-[2px] bg-gradient-to-r from-transparent to-orange-500/50 transform -translate-y-1/2" />
+      </div>
+      
+      <div className="relative flex flex-col items-center justify-center text-center">
+        {/* Glowing Core */}
+        <div className="memory-core-orb relative w-32 h-32 rounded-full mb-8 flex items-center justify-center" style={{ background: 'radial-gradient(circle at 30% 30%, #ff8c40, #ff4d00)' }}>
+           <div className="absolute inset-0 rounded-full border border-white/20 mix-blend-overlay" />
+           {/* Inner rings */}
+           <div className="absolute w-[150%] h-[150%] rounded-full border border-orange-500/30 opacity-50 animate-[spin_10s_linear_infinite]" />
+           <div className="absolute w-[200%] h-[200%] rounded-full border border-orange-500/10 opacity-50 animate-[spin_15s_linear_infinite_reverse]" />
+        </div>
+        
+        <h3 className="text-4xl md:text-5xl font-bold tracking-tight mb-4" style={{ color: "var(--text)" }}>
+          Your External Brain
+        </h3>
+        <p className="text-lg max-w-md" style={{ color: "var(--text-muted)" }}>
+          Fragments of thought, perfectly indexed and actively woven into your workflow.
+        </p>
+      </div>
+    </li>
+  );
+}
+
 function MemoryList({
   memories,
   onUpdate,
@@ -1577,14 +1702,46 @@ function MemoryList({
   onUpdate: (id: string, updates: Partial<Pick<Memory, "content" | "tags">>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
-  const gridRef = useRef<HTMLUListElement>(null);
-  const prefersReducedMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: gridRef,
-    offset: ["start end", "end start"],
-  });
-  const driftRight = useTransform(scrollYProgress, [0, 0.5, 1], [-18, 12, 0]);
-  const driftLeft = useTransform(scrollYProgress, [0, 0.5, 1], [14, -12, 0]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !trackRef.current || memories.length === 0) return;
+
+    let ctx = gsap.context(() => {
+      const track = trackRef.current;
+      if (!track) return;
+      
+      const getScrollAmount = () => {
+        const trackWidth = track.scrollWidth;
+        const windowWidth = window.innerWidth;
+        return Math.max(0, trackWidth - windowWidth);
+      };
+
+      const scrollAmount = getScrollAmount();
+      
+      if (scrollAmount > 0) {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top top", 
+            end: () => `+=${scrollAmount}`,
+            pin: true,
+            scrub: 1,
+            invalidateOnRefresh: true,
+          }
+        });
+
+        // Move the entire track horizontally
+        tl.to(track, {
+          x: -scrollAmount,
+          ease: "none"
+        });
+      }
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [memories]);
 
   if (memories.length === 0) {
     return (
@@ -1600,45 +1757,63 @@ function MemoryList({
       </div>
     );
   }
+
   return (
-    <motion.ul
-      ref={gridRef}
-      className="grid gap-4 sm:grid-cols-2"
-      initial={prefersReducedMotion ? false : "hidden"}
-      whileInView="show"
-      viewport={revealViewport}
-      variants={{
-        hidden: {},
-        show: {
-          transition: {
-            staggerChildren: prefersReducedMotion ? 0 : 0.07,
-          },
-        },
-      }}
-    >
-      {memories.map((m, i) => (
-        <MemoryCard
-          key={m.id}
-          memory={m}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          parallaxX={prefersReducedMotion ? undefined : i % 2 === 0 ? driftRight : driftLeft}
-        />
-      ))}
-    </motion.ul>
+    <div ref={containerRef} className="relative z-10 w-full h-screen bg-background overflow-hidden border-t border-border/50 flex flex-col">
+      
+      {/* Horizontal Scrolling Track */}
+      <div ref={trackRef} className="flex items-stretch h-full" style={{ width: 'max-content' }}>
+        
+        {/* Intro Panel (Scrolls away) */}
+        <div className="w-[100vw] md:w-[45vw] shrink-0 h-full flex flex-col justify-center px-10 md:px-20 relative">
+          <div className="memory-core-orb relative w-32 h-32 rounded-full mb-8 flex items-center justify-center" style={{ background: 'radial-gradient(circle at 30% 30%, #ff8c40, #ff4d00)' }}>
+             <div className="absolute inset-0 rounded-full border border-white/20 mix-blend-overlay" />
+             <div className="absolute w-[150%] h-[150%] rounded-full border border-orange-500/30 opacity-50 animate-[spin_10s_linear_infinite]" />
+             <div className="absolute w-[200%] h-[200%] rounded-full border border-orange-500/10 opacity-50 animate-[spin_15s_linear_infinite_reverse]" />
+          </div>
+          
+          <h2 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 leading-tight" style={{ color: "var(--text)" }}>
+            Your External Brain
+          </h2>
+          <p className="text-xl max-w-md leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            Fragments of thought, perfectly indexed and actively woven into your workflow.
+          </p>
+        </div>
+
+        {/* Memory Card Panels */}
+        {memories.map((m, i) => (
+          <div 
+            key={m.id} 
+            className="w-[85vw] md:w-[50vw] shrink-0 h-full flex flex-col justify-center px-10 md:px-20 border-l border-border/50 relative hover:bg-white/[0.02] transition-colors duration-500"
+          >
+            {/* Subtle glow behind the card content */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none" />
+            
+            <div className="relative z-10 w-full max-w-2xl mx-auto h-[60vh]">
+              <MemoryCard
+                memory={m}
+                index={i}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+              />
+            </div>
+          </div>
+        ))}
+        
+      </div>
+    </div>
   );
 }
-
 function MemoryCard({
   memory,
+  index,
   onUpdate,
   onDelete,
-  parallaxX,
 }: {
   memory: Memory;
+  index: number;
   onUpdate: (id: string, updates: Partial<Pick<Memory, "content" | "tags">>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  parallaxX?: MotionValue<number>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(memory.content);
@@ -1666,37 +1841,29 @@ function MemoryCard({
     setBusy(true);
     await onDelete(memory.id);
   };
-
-  const cardStyle: MotionStyle = parallaxX ? { x: parallaxX } : {};
+  
+  const yOffset = index % 2 === 0 ? '-30px' : '30px';
 
   return (
-    <motion.li
-      className="group dv-card relative p-4 md:p-5"
-      style={cardStyle}
-      variants={{
-        hidden: { opacity: 0, y: 18 },
-        show: { opacity: 1, y: 0 },
+    <li
+      className="dv-memory-shard group shrink-0 p-8 md:p-10 flex flex-col justify-between"
+      style={{
+        width: "min(85vw, 480px)",
+        height: "450px",
+        transform: `translateY(${yOffset})`,
       }}
-      transition={{ duration: 0.5, ease: revealEase }}
     >
-      {/* Inset top highlight */}
-      <div
-        className="absolute top-0 left-4 right-4 h-px"
-        style={{
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)",
-        }}
-      />
-
-      <div className="mb-2 flex items-center justify-between">
-        <span className="flex gap-1.5">
+      <div className="mb-8 flex items-start justify-between gap-4 relative z-10">
+        <span className="flex flex-wrap gap-2 flex-1">
           {memory.tags && memory.tags.length > 0 ? (
             memory.tags.map((t) => (
               <span
                 key={t}
-                className="text-micro-label rounded-full px-2.5 py-0.5"
+                className="text-xs font-semibold tracking-wide rounded-full px-4 py-1.5 backdrop-blur-md"
                 style={{
-                  background: "rgba(255,109,41,0.1)",
-                  color: "var(--accent-soft)",
+                  background: "rgba(255, 109, 41, 0.15)",
+                  border: "1px solid rgba(255, 109, 41, 0.3)",
+                  color: "var(--accent-orange)",
                 }}
               >
                 {t}
@@ -1704,129 +1871,115 @@ function MemoryCard({
             ))
           ) : (
             <span
-              className="text-micro-label rounded-full px-2.5 py-0.5"
+              className="text-xs font-semibold tracking-wide rounded-full px-4 py-1.5 backdrop-blur-md"
               style={{
-                background: "rgba(255,255,255,0.04)",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
                 color: "var(--text-muted)",
               }}
             >
-              note
+              Fragment
             </span>
           )}
         </span>
-        <span className="flex items-center gap-2">
-          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            {relTime(memory.createdAt)}
-          </span>
+
+        <div className="flex items-center gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 focus-within:opacity-100">
           {!editing && (
-            <span className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <>
               <button
+                type="button"
                 onClick={() => setEditing(true)}
-                disabled={busy}
-                aria-label="Edit memory"
-                className="grid h-[32px] w-[32px] place-items-center rounded-full transition-colors disabled:opacity-40"
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                title="Edit"
                 style={{ color: "var(--text-muted)" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                  e.currentTarget.style.color = "var(--text)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                }}
               >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
               </button>
               <button
+                type="button"
                 onClick={remove}
                 disabled={busy}
-                aria-label="Delete memory"
-                className="grid h-[32px] w-[32px] place-items-center rounded-full transition-colors disabled:opacity-40"
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                title="Delete"
                 style={{ color: "var(--text-muted)" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(255,143,143,0.1)";
-                  e.currentTarget.style.color = "var(--color-danger)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                }}
               >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 6h18"></path>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                 </svg>
               </button>
-            </span>
+            </>
           )}
-        </span>
+        </div>
       </div>
 
-      {editing ? (
-        <div>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                save();
-              }
-              if (e.key === "Escape") cancel();
-            }}
-            autoFocus
-            rows={3}
-            className="dv-input resize-none text-sm"
-            style={{ borderRadius: "12px" }}
-          />
-          <div className="mt-2 flex justify-end gap-2">
-            <button
-              onClick={cancel}
+      <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar relative z-10 flex flex-col justify-center">
+        {editing ? (
+          <div className="h-full flex flex-col">
+            <textarea
+              className="dv-input flex-1 resize-none bg-transparent w-full text-lg leading-relaxed"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
               disabled={busy}
-              className="dv-btn-ghost text-xs disabled:opacity-40"
-              style={{ padding: "6px 14px" }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={save}
-              disabled={busy || draft.trim().length < 3}
-              className="dv-btn-primary text-xs disabled:opacity-30"
-              style={{ padding: "6px 14px", borderRadius: "999px" }}
-            >
-              Save
-            </button>
+              autoFocus
+              style={{ minHeight: "160px", color: "var(--text)" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  save();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancel();
+                }
+              }}
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={cancel}
+                disabled={busy}
+                className="dv-pill px-5 py-2"
+                style={{ background: "rgba(255,255,255,0.1)", color: "white" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                disabled={busy}
+                className="dv-pill px-5 py-2 font-semibold"
+                style={{ background: "var(--accent-orange)", color: "white", border: "none" }}
+              >
+                {busy ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <p className="text-card-body leading-relaxed" style={{ color: "var(--text-muted-strong)" }}>
-          {memory.content}
-        </p>
+        ) : (
+          <p
+            className="text-2xl md:text-3xl font-medium leading-tight whitespace-pre-wrap"
+            style={{ 
+              color: "var(--text)", 
+              letterSpacing: "-0.03em"
+            }}
+          >
+            {memory.content}
+          </p>
+        )}
+      </div>
+      
+      {!editing && (
+         <div className="mt-8 pt-6 border-t border-white/5 relative z-10 flex items-center justify-between">
+           <span className="text-sm font-medium tracking-wide uppercase" style={{ color: "var(--text-muted)"}}>
+             {relTime(memory.createdAt)}
+           </span>
+           <div className="w-2 h-2 rounded-full" style={{ background: "var(--accent-orange)", boxShadow: "0 0 10px var(--accent-orange)" }} />
+         </div>
       )}
-    </motion.li>
+    </li>
   );
 }
-
 function relTime(ts: number) {
   const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
@@ -1841,63 +1994,122 @@ function relTime(ts: number) {
 /* ─── Features Grid (§7.4) ───────────────────────────────── */
 
 function FeaturesGrid() {
-  const features = [
-    {
-      icon: ShieldCheck,
-      title: "Local-first",
-      description:
-        "All data stays on your device in IndexedDB. No cloud, no account, no tracking. Your memories are yours.",
-    },
-    {
-      icon: Sparkles,
-      title: "Smart Recall",
-      description:
-        "Déjà Vu uses text similarity to surface relevant memories automatically when you copy related content.",
-    },
-    {
-      icon: Tags,
-      title: "Tag System",
-      description:
-        "Organize memories with tags. Filter, search, and let the system learn what matters most to you.",
-    },
-  ];
-
   return (
-    <section id="features" className="mt-24">
+    <section id="features" className="mt-24 max-w-[1400px] mx-auto px-4 md:px-8 mb-24">
       <ScrollReveal>
-        <div className="mb-12 text-center">
-          <p className="text-ui-label mb-3" style={{ color: "var(--text-muted)" }}>
+        <div className="mb-16 text-left md:text-center max-w-2xl mx-auto">
+          <p className="text-ui-label mb-3 uppercase tracking-wider font-semibold" style={{ color: "var(--accent-orange)" }}>
             Features
           </p>
-          <h2 className="text-section-heading md:text-[32px]" style={{ color: "var(--text)" }}>
-            Built for the way you think
+          <h2 className="text-5xl md:text-6xl font-bold tracking-tight mb-4" style={{ color: "var(--text)" }}>
+            Designed for deep work
           </h2>
         </div>
       </ScrollReveal>
-      <StaggerReveal className="grid gap-6 md:grid-cols-3" staggerChildren={0.09}>
-        {features.map((f) => (
-          <div className="group dv-card p-6 md:p-7">
-            <div
-              className="mb-4 grid h-[44px] w-[44px] place-items-center rounded-xl"
-              style={{ background: "rgba(255,109,41,0.1)" }}
-            >
-              <f.icon className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
+      
+      {/* Bulletproof Grid-Column Masonry (Fixes StaggerReveal squishing) */}
+      <StaggerReveal className="grid grid-cols-1 lg:grid-cols-3 gap-6" staggerChildren={0.1}>
+        
+        {/* Column 1 */}
+        <div className="flex flex-col gap-6 h-full">
+          {/* Huge Vertical Card */}
+          <div className="group rounded-[2rem] p-8 md:p-10 relative overflow-hidden flex flex-col justify-between h-full min-h-[400px] md:min-h-[540px]" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="absolute -bottom-32 -left-32 w-[150%] h-[150%] bg-orange-500/10 blur-[100px] rounded-full pointer-events-none transition-opacity duration-700 group-hover:bg-orange-500/20" />
+            <div className="relative z-10">
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "rgba(255,109,41,0.15)" }}>
+                <Zap className="h-7 w-7" style={{ color: "var(--accent-orange)" }} />
+              </div>
             </div>
-            <h3
-              className="text-lg font-bold mb-2"
-              style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
-            >
-              {f.title}
-            </h3>
-            <p className="text-card-body leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              {f.description}
-            </p>
+            <div className="relative z-10 mt-auto">
+              <h3 className="text-4xl md:text-[2.75rem] font-bold tracking-tight mb-4 leading-[1.1]" style={{ color: "var(--text)" }}>
+                Ctrl+O to outcome
+              </h3>
+              <p className="text-lg leading-relaxed text-balance" style={{ color: "var(--text-muted)" }}>
+                Press Win+O or Cmd+O, say the result you want, and stay inside the app you were already using.
+              </p>
+            </div>
           </div>
-        ))}
+        </div>
+
+        {/* Column 2 */}
+        <div className="flex flex-col gap-6 h-full">
+          <div className="group rounded-[2rem] p-8 relative overflow-hidden flex flex-col justify-between flex-1 min-h-[260px]" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="absolute -top-20 -right-20 w-[100%] h-[100%] bg-orange-500/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-700 group-hover:bg-orange-500/10" />
+            <div className="relative z-10">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "rgba(255,109,41,0.1)" }}>
+                <Brain className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
+              </div>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1]" style={{ color: "var(--text)" }}>
+                Understand the screen
+              </h3>
+              <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                Déjà Vu reads the visible text, the user command, and the messy context around the request.
+              </p>
+            </div>
+          </div>
+
+          <div className="group rounded-[2rem] p-8 relative overflow-hidden flex flex-col justify-between flex-1 min-h-[260px]" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="absolute -bottom-20 -left-20 w-[100%] h-[100%] bg-orange-500/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-700 group-hover:bg-orange-500/10" />
+            <div className="relative z-10">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "rgba(255,109,41,0.1)" }}>
+                <Sparkles className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
+              </div>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1]" style={{ color: "var(--text)" }}>
+                Revise live
+              </h3>
+              <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                New voice commands reshape the workflow, add tags, or redirect the output instantly.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3 */}
+        <div className="flex flex-col gap-6 h-full">
+          <div className="group rounded-[2rem] p-8 md:p-10 relative overflow-hidden flex flex-col justify-between flex-[1.3] min-h-[300px]" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="absolute top-0 right-0 w-[150%] h-[150%] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none transition-opacity duration-700 group-hover:bg-orange-500/15" />
+            <div className="relative z-10">
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "rgba(255,109,41,0.15)" }}>
+                <ShieldCheck className="h-6 w-6" style={{ color: "var(--accent-orange)" }} />
+              </div>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <h3 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 leading-[1.1]" style={{ color: "var(--text)" }}>
+                Local-first Privacy
+              </h3>
+              <p className="text-lg leading-relaxed text-balance" style={{ color: "var(--text-muted)" }}>
+                All data stays on your device in IndexedDB. No cloud, no account, no tracking. Your memories are yours.
+              </p>
+            </div>
+          </div>
+
+          <div className="group rounded-[2rem] p-8 relative overflow-hidden flex flex-col justify-between flex-1 min-h-[220px]" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="absolute -bottom-20 -right-20 w-[100%] h-[100%] bg-orange-500/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-700 group-hover:bg-orange-500/10" />
+            <div className="relative z-10">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "rgba(255,109,41,0.1)" }}>
+                <Tags className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
+              </div>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1]" style={{ color: "var(--text)" }}>
+                Infinite Memory
+              </h3>
+              <p className="text-base leading-relaxed text-balance" style={{ color: "var(--text-muted)" }}>
+                Auto-tags and categorizes your captured thoughts so you never lose context.
+              </p>
+            </div>
+          </div>
+        </div>
+
       </StaggerReveal>
     </section>
   );
 }
+
 
 /* ─── FAQ (§7.9 — flat list, no card bg) ──────────────────── */
 
@@ -1906,83 +2118,109 @@ function FAQ() {
 
   const items = [
     {
+      q: "What is Déjà Vu?",
+      a: "Déjà Vu is a local-first memory assistant that passively records what you copy and uses semantic search to surface relevant past context when you need it."
+    },
+    {
       q: "Is my data sent anywhere?",
-      a: "No. All memories are stored locally in your browser's IndexedDB. Nothing ever leaves your device.",
+      a: "No. All memories are stored locally in your browser's IndexedDB. Nothing ever leaves your device."
+    },
+    {
+      q: "Do I need an internet connection?",
+      a: "No! The entire app, including the semantic similarity engine, runs 100% offline in your browser."
     },
     {
       q: "How does the recall work?",
-      a: "When you copy text (or type in the simulator), Déjà Vu runs a text similarity check against all your saved memories. If the score passes a threshold, the matching memory surfaces as a notification.",
-    },
-    {
-      q: "Can I use this on my actual desktop?",
-      a: "This is a web demo of the concept. The full version would be an Electron tray app that polls your real system clipboard and fires native OS notifications.",
+      a: "When you copy text, Déjà Vu runs a text similarity check against all your saved memories. If the score passes a threshold, the matching memory surfaces."
     },
     {
       q: "What similarity algorithm is used?",
-      a: "A combination of Jaccard similarity and query overlap ratio on tokenized text. It's lightweight and runs entirely in the browser — no API calls needed.",
+      a: "A combination of Jaccard similarity and query overlap ratio on tokenized text. It's lightweight and runs entirely in the browser — no API calls needed."
+    },
+    {
+      q: "How much memory does it use?",
+      a: "Déjà Vu is highly optimized. Because it stores text and tags locally in IndexedDB, the footprint is incredibly small—typically just a few megabytes for thousands of memories."
+    },
+    {
+      q: "Does it slow down my computer?",
+      a: "Not at all. The semantic similarity checks run in the background using lightweight processes, so your main browsing and working experience remains completely unaffected."
+    },
+    {
+      q: "What about passwords or sensitive data?",
+      a: "Déjà Vu allows you to pause capture at any time. In the desktop version, you can configure blocklists so apps like password managers are completely ignored."
     },
     {
       q: "How do I delete my data?",
-      a: "You can delete individual memories using the trash icon on each card. To clear everything, clear your browser's IndexedDB storage for this site.",
+      a: "You can delete individual memories using the trash icon on each card. To clear everything, simply clear your browser's IndexedDB storage for this site."
+    },
+    {
+      q: "Can I use this on my actual desktop?",
+      a: "This is a web demo. The full version would be an Electron tray app that polls your real system clipboard and fires native OS notifications."
     },
     {
       q: "Will there be a mobile app?",
-      a: "The concept is designed for desktop where clipboard monitoring makes sense. A mobile companion for manual capture is being explored.",
+      a: "The concept is designed for desktop where clipboard monitoring makes sense. A mobile companion for manual capture and browsing is being explored."
     },
+    {
+      q: "Can I connect Notion or GitHub?",
+      a: "Currently, Déjà Vu operates entirely on text you explicitly copy to your clipboard, acting as a universal capture layer rather than relying on API integrations."
+    }
   ];
 
   return (
-    <section id="faq" className="mx-auto mt-24 max-w-2xl">
-      <ScrollReveal>
-        <div className="mb-12 text-center">
-          <p className="text-ui-label mb-3" style={{ color: "var(--text-muted)" }}>
-            FAQ
-          </p>
-          <h2 className="text-section-heading md:text-[32px]" style={{ color: "var(--text)" }}>
-            Questions & answers
-          </h2>
-        </div>
-      </ScrollReveal>
-      <div>
-        {items.map((item, i) => (
-          <ScrollReveal key={i} delay={i * 50}>
-            <div style={{ borderBottom: "1px solid var(--line)" }}>
-              <button
+    <section id="faq" className="w-full py-32 mt-12">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8">
+        <ScrollReveal>
+          <div className="mb-16 text-center">
+            <h2 className="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight mb-6 leading-none" style={{ color: "var(--text)", letterSpacing: "-0.04em" }}>
+              Frequently Asked<br/>Questions
+            </h2>
+            <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              Everything you need to know before using Déjà Vu, from local storage architecture to semantic similarity algorithms.
+            </p>
+          </div>
+        </ScrollReveal>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {items.map((item, i) => (
+            <ScrollReveal key={i} delay={i * 50}>
+              <div 
+                className="group transition-colors rounded-[2rem] overflow-hidden cursor-pointer"
+                style={{ background: "var(--card)", border: "1px solid var(--border)" }}
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full flex items-center justify-between py-5 text-left transition-colors"
-                style={{ color: "var(--text)" }}
               >
-                <span
-                  className="text-[15px] font-semibold pr-4"
-                  style={{ letterSpacing: "-0.01em" }}
-                >
-                  {item.q}
-                </span>
-                <ChevronDown
-                  className="h-4 w-4 shrink-0 transition-transform duration-200"
-                  style={{
-                    color: "var(--text-muted)",
-                    transform: openIndex === i ? "rotate(180deg)" : "rotate(0deg)",
-                  }}
-                />
-              </button>
-              <div
-                style={{
-                  maxHeight: openIndex === i ? "200px" : "0px",
-                  overflow: "hidden",
-                  transition: "max-height 250ms ease",
-                }}
-              >
-                <p
-                  className="text-card-body pb-5 leading-relaxed"
-                  style={{ color: "var(--text-muted-strong)", paddingTop: "4px" }}
-                >
-                  {item.a}
-                </p>
+                {/* Subtle Hover Glow */}
+                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                
+                <div className="relative z-10 p-6 md:p-8 flex items-start gap-6">
+                  <div className="shrink-0 mt-1">
+                    <Plus 
+                      className="h-6 w-6 transition-transform duration-300" 
+                      style={{ color: "var(--accent-orange)", transform: openIndex === i ? "rotate(45deg)" : "rotate(0deg)" }} 
+                    />
+                  </div>
+                  <div className="w-full">
+                    <span className="font-bold text-lg md:text-xl block tracking-tight" style={{ color: "var(--text)" }}>
+                      {item.q}
+                    </span>
+                    <div
+                      className="transition-all duration-300 ease-in-out overflow-hidden"
+                      style={{
+                        maxHeight: openIndex === i ? "300px" : "0px",
+                        opacity: openIndex === i ? 1 : 0,
+                        marginTop: openIndex === i ? "1rem" : "0px"
+                      }}
+                    >
+                      <p className="leading-relaxed text-base" style={{ color: "var(--text-muted)" }}>
+                        {item.a}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </ScrollReveal>
-        ))}
+            </ScrollReveal>
+          ))}
+        </div>
       </div>
     </section>
   );
