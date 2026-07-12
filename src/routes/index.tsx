@@ -1,25 +1,48 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  type MotionStyle,
+  type MotionValue,
+} from "framer-motion";
 import mascotSrc from "../assets/mascot.png";
 import { searchTop, type Memory } from "../lib/memory-store";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
 import {
-  Search, X, Moon, Sun, Github, Brain, Zap, Tag, Flame,
-  ShieldCheck, Sparkles, Tags, Plus, Eye, EyeOff, Menu, Send,
+  Search,
+  X,
+  Moon,
+  Sun,
+  Github,
+  Brain,
+  Zap,
+  Tag,
+  Flame,
+  ShieldCheck,
+  Sparkles,
+  Tags,
+  Plus,
+  Eye,
+  EyeOff,
+  Menu,
+  Send,
+  ChevronDown,
+  ArrowRight,
 } from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { useMemories } from "../hooks/use-memories";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Accordion, AccordionItem, AccordionTrigger, AccordionContent,
-} from "@/components/ui/accordion";
-import {
-  CommandDialog, CommandInput, CommandList, CommandEmpty,
-  CommandGroup, CommandItem,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
 } from "@/components/ui/command";
 
 export const Route = createFileRoute("/")({
@@ -46,19 +69,24 @@ const SAMPLE_COPIES = [
   "standup with Sam tomorrow?",
 ];
 
-/* ─── Dark mode hook ──────────────────────────────────────── */
+/* ─── Dark mode hook (now .light class toggle) ─────────── */
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return document.documentElement.classList.contains("dark");
+    if (typeof window === "undefined") return true;
+    return !document.documentElement.classList.contains("light");
   });
 
   const toggle = useCallback(() => {
     const next = !dark;
     setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("dejavu-theme", next ? "dark" : "light");
+    if (next) {
+      document.documentElement.classList.remove("light");
+      localStorage.setItem("dejavu-theme", "dark");
+    } else {
+      document.documentElement.classList.add("light");
+      localStorage.setItem("dejavu-theme", "light");
+    }
   }, [dark]);
 
   return { dark, toggle };
@@ -74,6 +102,103 @@ declare global {
   }
 }
 
+/* ─── Scroll Reveal Hook & Component ──────────────────────── */
+
+const revealEase = [0.16, 1, 0.3, 1] as const;
+const revealViewport = { once: true, amount: 0.24 };
+
+type RevealDirection = "up" | "left" | "right";
+
+function revealOffset(direction: RevealDirection) {
+  if (direction === "left") return { x: -34, y: 0 };
+  if (direction === "right") return { x: 34, y: 0 };
+  return { x: 0, y: 22 };
+}
+
+function ScrollReveal({
+  children,
+  delay = 0,
+  className = "",
+  direction = "up",
+  scale = 1,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  direction?: RevealDirection;
+  scale?: number;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const offset = revealOffset(direction);
+
+  return (
+    <motion.div
+      className={className}
+      initial={prefersReducedMotion ? false : { opacity: 0, ...offset, scale }}
+      whileInView={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+      viewport={revealViewport}
+      transition={{
+        duration: prefersReducedMotion ? 0 : 0.55,
+        delay: prefersReducedMotion ? 0 : delay,
+        ease: revealEase,
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function StaggerReveal({
+  children,
+  className = "",
+  itemClassName = "",
+  delayChildren = 0,
+  staggerChildren = 0.08,
+}: {
+  children: React.ReactNode[];
+  className?: string;
+  itemClassName?: string;
+  delayChildren?: number;
+  staggerChildren?: number;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className={className}
+      initial={prefersReducedMotion ? false : "hidden"}
+      whileInView="show"
+      viewport={revealViewport}
+      variants={{
+        hidden: {},
+        show: {
+          transition: {
+            delayChildren: prefersReducedMotion ? 0 : delayChildren,
+            staggerChildren: prefersReducedMotion ? 0 : staggerChildren,
+          },
+        },
+      }}
+    >
+      {children.map((child, index) => (
+        <motion.div
+          key={index}
+          className={itemClassName}
+          variants={{
+            hidden: { opacity: 0, y: 18 },
+            show: { opacity: 1, y: 0 },
+          }}
+          transition={{
+            duration: prefersReducedMotion ? 0 : 0.5,
+            ease: revealEase,
+          }}
+        >
+          {child}
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+}
+
 /* ─── Main page ───────────────────────────────────────────── */
 
 function Index() {
@@ -86,7 +211,11 @@ function Index() {
   const [clipboard, setClipboard] = useState("");
   const [mascot, setMascot] = useState<MascotState>("idle");
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [lastCheck, setLastCheck] = useState<{ query: string; score: number; matched: boolean } | null>(null);
+  const [lastCheck, setLastCheck] = useState<{
+    query: string;
+    score: number;
+    matched: boolean;
+  } | null>(null);
   const [watching, setWatching] = useState(true);
   const [cmdOpen, setCmdOpen] = useState(false);
   const debounceRef = useRef<number | null>(null);
@@ -119,7 +248,7 @@ function Index() {
         setLastCheck({ query: value, score: best.score, matched: true });
         const id = ++toastIdRef.current;
         setToasts((t) => [...t, { id, memory: best.memory, score: best.score, query: value }]);
-        
+
         // Trigger native OS notification
         if (window.electronAPI?.isElectron && Notification.permission === "granted") {
           new Notification("Déjà Vu found a memory", {
@@ -127,7 +256,7 @@ function Index() {
             icon: mascotSrc,
           });
         } else if (window.electronAPI?.isElectron && Notification.permission !== "denied") {
-          Notification.requestPermission().then(permission => {
+          Notification.requestPermission().then((permission) => {
             if (permission === "granted") {
               new Notification("Déjà Vu found a memory", {
                 body: best.memory.content,
@@ -202,10 +331,17 @@ function Index() {
     if (trimmed.length < 8 || memories.length === 0) return;
     typingDebounceRef.current = window.setTimeout(() => {
       const best = searchTop(memories, trimmed);
-      if (best && best.score >= RECALL_THRESHOLD && best.memory.content !== lastSimilarNotifyRef.current) {
+      if (
+        best &&
+        best.score >= RECALL_THRESHOLD &&
+        best.memory.content !== lastSimilarNotifyRef.current
+      ) {
         lastSimilarNotifyRef.current = best.memory.content;
         toast.info("Similar memory exists", {
-          description: best.memory.content.length > 80 ? best.memory.content.slice(0, 80) + "…" : best.memory.content,
+          description:
+            best.memory.content.length > 80
+              ? best.memory.content.slice(0, 80) + "…"
+              : best.memory.content,
           duration: 4000,
         });
       }
@@ -217,7 +353,8 @@ function Index() {
   const filteredMemories = useMemo(() => {
     return memories.filter((memory) => {
       const matchesSearch = memory.content.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesTags = activeTags.length === 0 || activeTags.every((tag) => memory.tags?.includes(tag));
+      const matchesTags =
+        activeTags.length === 0 || activeTags.every((tag) => memory.tags?.includes(tag));
       return matchesSearch && matchesTags;
     });
   }, [memories, searchQuery, activeTags]);
@@ -229,136 +366,190 @@ function Index() {
   }, [memories]);
 
   return (
-    <div className="min-h-screen" id="top">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 transition-colors duration-500"
-        style={{
-          background: dark
-            ? "radial-gradient(1200px 600px at 15% -10%, oklch(0.22 0.04 280 / 0.5), transparent 60%), radial-gradient(900px 500px at 100% 10%, oklch(0.2 0.06 60 / 0.3), transparent 60%)"
-            : "radial-gradient(1200px 600px at 15% -10%, oklch(0.9 0.05 300 / 0.7), transparent 60%), radial-gradient(900px 500px at 100% 10%, oklch(0.92 0.08 70 / 0.5), transparent 60%)",
-        }}
-      />
+    <div className="min-h-screen p-2 md:p-4" id="top" style={{ color: "var(--foreground)" }}>
+      <div className="boxed-wrapper">
+        <NavBar dark={dark} onToggleDark={toggleDark} onOpenCmd={() => setCmdOpen(true)} />
 
-      <NavBar
-        dark={dark}
-        onToggleDark={toggleDark}
-        onOpenCmd={() => setCmdOpen(true)}
-      />
+        <main className="mx-auto max-w-6xl px-4 md:px-6 pb-24 pt-32">
+          {/* ── Hero ─────────────────────────────────────────── */}
+          <section className="mb-12 flex flex-col-reverse md:grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
+            <ScrollReveal direction="left">
+              <div>
+                <p
+                  className="text-ui-label mb-4 inline-flex items-center gap-2"
+                  style={{ color: "var(--accent-soft)" }}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{
+                      background: "var(--accent-orange)",
+                      animation: "pulseSoft 1.3s ease-in-out infinite",
+                    }}
+                  />
+                  Your personal memory assistant
+                </p>
+                <h1 className="text-hero">
+                  The memory that <span style={{ color: "var(--accent-orange)" }}>finds you</span>{" "}
+                  before you ask.
+                </h1>
+                <p
+                  className="mt-6 max-w-[570px] text-body mb-8"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Save a thought in 5 seconds. Later, when you copy something related — anywhere on
+                  your machine — Déjà Vu quietly surfaces it. No search bar. No prompt.
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="relative group">
+                    <div className="absolute inset-0 rounded-xl bg-[var(--accent-orange)] opacity-40 blur-xl transition-all duration-500 group-hover:opacity-70 group-hover:blur-2xl"></div>
+                    <button
+                      className="relative flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-bold transition-all"
+                      style={{
+                        background: "var(--accent-orange)",
+                        color: "var(--accent-ink)",
+                        boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4)",
+                      }}
+                    >
+                      Get early access <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button
+                    className="flex items-center justify-center rounded-xl px-6 py-3 font-semibold transition-all"
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid var(--line)",
+                      color: "var(--text)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                    }}
+                  >
+                    Watch demo
+                  </button>
+                </div>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal
+              delay={0.15}
+              direction="right"
+              className="flex justify-center md:justify-end"
+            >
+              <Mascot state={mascot} className="w-36 h-36 md:w-44 md:h-44" />
+            </ScrollReveal>
+          </section>
 
-      <main className="mx-auto max-w-6xl px-4 md:px-6 pb-24 pt-6">
-        {/* ── Hero ─────────────────────────────────────────── */}
-        <section className="mb-10 flex flex-col-reverse md:grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
-          <div>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-recall" />
-              Your personal memory assistant
-            </p>
-            <h1 className="font-display text-4xl leading-[1.05] md:text-6xl text-wave-hover cursor-default">
-              The memory that{" "}
-              <em className="not-italic text-recall-foreground/80" style={{ color: "oklch(0.55 0.14 60)" }}>
-                finds you
-              </em>{" "}
-              before you ask.
-            </h1>
-            <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
-              Save a thought in 5 seconds. Later, when you copy something related — anywhere on
-              your machine — Déjà Vu quietly surfaces it. No search bar. No prompt.
-            </p>
-          </div>
-          <div className="flex justify-center md:justify-end">
-            <Mascot state={mascot} className="w-32 h-32 md:w-40 md:h-40" />
-          </div>
-        </section>
+          {/* ── Brain Stats ──────────────────────────────────── */}
+          <BrainStats memories={memories} recalls={recalls} />
 
-        {/* ── Brain Stats ──────────────────────────────────── */}
-        <BrainStats memories={memories} recalls={recalls} />
+          {/* ── Quick Add ────────────────────────────────────── */}
+          <section className="mt-12 mx-auto max-w-2xl" id="quick-add">
+            <QuickAdd
+              value={thought}
+              onChange={handleThoughtChange}
+              tags={thoughtTags}
+              onTagsChange={setThoughtTags}
+              onSubmit={saveThought}
+              mascotState={mascot}
+              watching={watching}
+              onToggleWatch={() => setWatching((w) => !w)}
+            />
+          </section>
 
-        {/* ── Quick Add ────────────────────────────────────── */}
-        <section className="mt-10 mx-auto max-w-2xl" id="quick-add">
-          <QuickAdd
-            value={thought}
-            onChange={handleThoughtChange}
-            tags={thoughtTags}
-            onTagsChange={setThoughtTags}
-            onSubmit={saveThought}
+          {/* ── How It Works ─────────────────────────────────── */}
+          <HowItWorks
+            clipboard={clipboard}
+            onClipboardChange={setClipboard}
             mascotState={mascot}
-            watching={watching}
-            onToggleWatch={() => setWatching((w) => !w)}
+            lastCheck={lastCheck}
+            onSample={(s) => setClipboard(s)}
           />
-        </section>
 
-        {/* ── How It Works ─────────────────────────────────── */}
-        <HowItWorks
-          clipboard={clipboard}
-          onClipboardChange={setClipboard}
-          mascotState={mascot}
-          lastCheck={lastCheck}
-          onSample={(s) => setClipboard(s)}
-        />
-
-        {/* ── Your Memories ────────────────────────────────── */}
-        <section className="mt-12 md:mt-20" id="memories">
-          <div className="mb-4 flex flex-col md:flex-row md:items-baseline justify-between gap-2">
-            <h2 className="font-display text-2xl">Your memories</h2>
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">
-              {memories.length} saved · Stored locally on this device
-            </span>
-          </div>
-
-          <div className="mb-6 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search memories..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background/60 pl-10 pr-4 py-2 text-sm placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
-              />
+          {/* ── Your Memories ────────────────────────────────── */}
+          <section className="mt-16 md:mt-24" id="memories">
+            <div className="mb-6 flex flex-col md:flex-row md:items-baseline justify-between gap-2">
+              <h2 className="text-section-heading" style={{ color: "var(--text)" }}>
+                Your memories
+              </h2>
+              <span className="text-micro-label" style={{ color: "var(--text-muted)" }}>
+                {memories.length} saved · Stored locally on this device
+              </span>
             </div>
 
-            {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() =>
-                      setActiveTags((prev) =>
-                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-                      )
-                    }
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                      activeTags.includes(tag)
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80",
-                    )}
-                  >
-                    {tag}
-                  </button>
-                ))}
+            <div className="mb-6 space-y-4">
+              <div className="relative">
+                <Search
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4"
+                  style={{ color: "var(--text-muted)" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search memories..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="dv-input pl-11"
+                  style={{ borderRadius: 999 }}
+                />
+              </div>
+
+              {allTags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() =>
+                        setActiveTags((prev) =>
+                          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+                        )
+                      }
+                      className={cn(
+                        "dv-pill dv-pill--interactive",
+                        activeTags.includes(tag) && "dv-pill--active",
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <MemoryList
+              memories={filteredMemories}
+              onUpdate={updateMemory}
+              onDelete={deleteMemory}
+            />
+
+            {memories.length > 6 && (
+              <div className="mt-8 text-center">
+                <Link to="/memories" className="dv-btn-ghost">
+                  View all memories →
+                </Link>
               </div>
             )}
-          </div>
+          </section>
 
-          <MemoryList memories={filteredMemories} onUpdate={updateMemory} onDelete={deleteMemory} />
-        </section>
+          {/* ── Features ─────────────────────────────────────── */}
+          <FeaturesGrid />
 
-        {/* ── Features ─────────────────────────────────────── */}
-        <FeaturesGrid />
+          {/* ── FAQ ──────────────────────────────────────────── */}
+          <FAQ />
 
-        {/* ── FAQ ──────────────────────────────────────────── */}
-        <FAQ />
+          {/* ── Footer ───────────────────────────────────────── */}
+          <Footer />
+        </main>
+      </div>
 
-        {/* ── Footer ───────────────────────────────────────── */}
-        <Footer />
-      </main>
-
-      {/* ── Overlays ───────────────────────────────────────── */}
-      <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(92vw,360px)] flex-col gap-3">
+      {/* ── Overlays ── (Outside boxed wrapper so they float over the black edges) ── */}
+      <div className="pointer-events-none fixed right-4 top-20 z-50 flex w-[min(92vw,380px)] flex-col gap-3">
         {toasts.map((t) => (
-          <RecallToast key={t.id} toast={t} onDismiss={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} />
+          <RecallToast
+            key={t.id}
+            toast={t}
+            onDismiss={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+          />
         ))}
       </div>
 
@@ -375,7 +566,7 @@ function Index() {
   );
 }
 
-/* ─── NavBar (Surfy-style) ─────────────────────────────────── */
+/* ─── NavBar (Surfyy Floating Pill) ───────────────────────── */
 
 function NavBar({
   dark,
@@ -387,6 +578,7 @@ function NavBar({
   onOpenCmd: () => void;
 }) {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
@@ -394,126 +586,415 @@ function NavBar({
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  const navLinks = [
+    { label: "How it works", href: "#how-it-works" },
+    { label: "Features", href: "#features" },
+    { label: "FAQ", href: "#faq" },
+    { label: "All Memories", href: "/memories", isRoute: true },
+  ];
+
   return (
     <nav
       className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300",
-        scrolled
-          ? "bg-background/80 shadow-sm backdrop-blur-xl"
-          : "bg-background/40 backdrop-blur-sm",
+        "fixed top-4 left-0 right-0 z-50 flex justify-center w-full px-4 transition-all duration-300",
+        scrolled ? "translate-y-0 opacity-100" : "translate-y-0 opacity-100",
       )}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-8 py-3 md:py-5">
+      <div
+        className={cn(
+          "flex items-center justify-between transition-all duration-300",
+          "w-full max-w-[1000px] rounded-full h-[60px]",
+        )}
+        style={{
+          background: dark ? "rgba(24, 20, 18, 0.7)" : "rgba(255, 255, 255, 0.7)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid var(--line)",
+          boxShadow: scrolled
+            ? "0 8px 32px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0,0,0,0.08)"
+            : "0 4px 12px rgba(0, 0, 0, 0.05)",
+        }}
+      >
         {/* ── Left: Logo ── */}
-        <a href="#top" className="flex items-center gap-3.5">
-          <div className="relative grid h-10 w-10 md:h-12 md:w-12 place-items-center rounded-xl bg-foreground shadow-md">
+        <a href="#top" className="group flex items-center gap-2 pl-4 pr-2 shrink-0">
+          <div
+            className="dv-logo-badge overflow-hidden flex items-center justify-center transition-all duration-300 group-hover:bg-[rgba(255,109,41,0.15)]"
+            style={{ width: 36, height: 36, borderRadius: "50%" }}
+          >
             <img
               src={mascotSrc}
               alt=""
-              className="relative z-10 w-6 h-6 md:w-8 md:h-8 drop-shadow-sm"
-            />
-            <span
-              aria-hidden
-              className="absolute inset-x-1 -bottom-0.5 h-3 rounded-full bg-recall opacity-60 blur-[6px]"
+              className="relative z-10 w-7 h-7 drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"
             />
           </div>
-          <span className="text-base md:text-lg font-semibold tracking-tight">Déjà Vu</span>
+          <span
+            className="text-[16px] tracking-tight ml-1"
+            style={{ fontWeight: 800, color: "var(--text)" }}
+          >
+            Déjà Vu
+          </span>
         </a>
 
-        {/* ── Right: Actions ── */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onToggleDark}
-            className="hidden md:block rounded-full p-2.5 text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Toggle dark mode"
+        {/* ── Center: Nav links (Desktop/Large only) ── */}
+        <div className="hidden md:flex items-center gap-0.5">
+          {navLinks.map((link) =>
+            link.isRoute ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-all duration-200"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--text)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-muted)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-all duration-200"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--text)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-muted)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                {link.label}
+              </a>
+            ),
+          )}
+        </div>
+
+        {/* ── Right: Actions (Desktop/Large) ── */}
+        <div className="hidden md:flex items-center gap-2 pr-2 shrink-0">
+          {/* GitHub button (pill with text) */}
+          <a
+            href="https://github.com/Nakshatra05/Deja-Vu-Memories"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 h-[36px] px-3 rounded-full transition-all duration-200"
+            style={{
+              border: "1px solid var(--line)",
+              background: "rgba(255,255,255,0.03)",
+              color: "var(--text)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent-orange)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--line)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+            }}
           >
-            {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
-          
+            <Github className="h-[14px] w-[14px]" />
+            <span className="text-[13px] font-semibold">GitHub</span>
+          </a>
+
+          {/* Search button (icon only or small pill to save space) */}
           <button
             onClick={onOpenCmd}
-            className="hidden md:flex h-10 items-center gap-2 rounded-full bg-muted/50 px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+            className="grid h-[36px] w-[36px] place-items-center rounded-full transition-all duration-200"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid var(--line)",
+              color: "var(--text-muted)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent-orange)";
+              e.currentTarget.style.color = "var(--text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--line)";
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
+            aria-label="Search"
           >
-            <Search className="h-4 w-4" />
-            <span>Search</span>
-            <kbd className="hidden md:inline-flex ml-2 items-center gap-1 rounded bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground">
-              <span className="text-xs">⌘</span>K
-            </kbd>
+            <Search className="h-[14px] w-[14px]" />
           </button>
 
-          {/* Mobile Menu Dropdown */}
-          <div className="md:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="rounded-full p-2 text-muted-foreground hover:text-foreground focus:outline-none">
-                <Menu className="h-5 w-5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-background/95 backdrop-blur-xl border-border/50">
-                <DropdownMenuItem onClick={onOpenCmd}>
-                  <Search className="mr-2 h-4 w-4" /> Search
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onToggleDark}>
-                  {dark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />} Toggle Theme
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="#how-it-works">How it works</a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="#features">Features</a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="#faq">FAQ</a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/memories">All Memories</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {/* Theme toggle */}
+          <button
+            onClick={onToggleDark}
+            className="grid h-[36px] w-[36px] place-items-center rounded-full transition-all duration-200"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid var(--line)",
+              color: "var(--text-muted)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent-orange)";
+              e.currentTarget.style.color = "var(--text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--line)";
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
+            aria-label="Toggle dark mode"
+          >
+            {dark ? <Sun className="h-[14px] w-[14px]" /> : <Moon className="h-[14px] w-[14px]" />}
+          </button>
+
+          {/* Get Access button with glow */}
+          <div className="relative group ml-1">
+            <div className="absolute inset-0 rounded-full bg-[var(--accent-orange)] opacity-40 blur-md transition-all duration-500 group-hover:opacity-70 group-hover:blur-lg"></div>
+            <Link
+              to="/memories"
+              className="relative flex items-center justify-center h-[36px] px-5 rounded-full font-bold text-[13px] transition-all"
+              style={{
+                background: "var(--accent-orange)",
+                color: "var(--accent-ink)",
+                boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4)",
+              }}
+            >
+              Get access
+            </Link>
           </div>
         </div>
+
+        {/* ── Hamburger (Mobile/Tablet) ── */}
+        <div className="md:hidden flex items-center gap-1.5 pr-2">
+          <button
+            onClick={onToggleDark}
+            className="grid h-[36px] w-[36px] place-items-center rounded-full transition-all duration-200"
+            style={{
+              border: "1px solid var(--line)",
+              color: "var(--text-muted)",
+            }}
+            aria-label="Toggle dark mode"
+          >
+            {dark ? <Sun className="h-[14px] w-[14px]" /> : <Moon className="h-[14px] w-[14px]" />}
+          </button>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="grid h-[36px] w-[36px] place-items-center rounded-full transition-all duration-200"
+            style={{
+              background: mobileOpen ? "rgba(255,109,41,0.12)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${mobileOpen ? "rgba(255,109,41,0.3)" : "var(--line)"}`,
+              color: mobileOpen ? "var(--accent-orange)" : "var(--text-muted)",
+            }}
+            aria-label="Open menu"
+          >
+            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
+
+      {/* ── Mobile Dropdown ── */}
+      {mobileOpen && (
+        <div
+          className="md:hidden absolute top-[70px] left-4 right-4 rounded-[20px]"
+          style={{
+            background: dark ? "rgba(20, 16, 14, 0.95)" : "rgba(255, 255, 255, 0.95)",
+            border: "1px solid var(--line)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.2)",
+            animation: "panelEnter 300ms cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <div className="p-2 flex flex-col gap-1">
+            {navLinks.map((link) =>
+              link.isRoute ? (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-medium transition-all duration-200"
+                  style={{ color: "var(--text-muted)" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text)";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <Brain className="h-4 w-4" style={{ color: "var(--accent-orange)" }} />
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-medium transition-all duration-200"
+                  style={{ color: "var(--text-muted)" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text)";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  {link.label === "How it works" && (
+                    <Zap className="h-4 w-4" style={{ color: "var(--accent-orange)" }} />
+                  )}
+                  {link.label === "Features" && (
+                    <Sparkles className="h-4 w-4" style={{ color: "var(--accent-orange)" }} />
+                  )}
+                  {link.label === "FAQ" && (
+                    <Search className="h-4 w-4" style={{ color: "var(--accent-orange)" }} />
+                  )}
+                  {link.label}
+                </a>
+              ),
+            )}
+
+            <div className="mx-2 my-1" style={{ borderTop: "1px solid var(--line)" }} />
+
+            <button
+              onClick={() => {
+                onOpenCmd();
+                setMobileOpen(false);
+              }}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-medium transition-all duration-200"
+              style={{ color: "var(--text-muted)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--text)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--text-muted)";
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Search className="h-4 w-4" style={{ color: "var(--accent-orange)" }} />
+              Search
+              <kbd
+                className="ml-auto inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+                style={{ background: "rgba(255,255,255,0.07)", color: "var(--text-muted-strong)" }}
+              >
+                ⌘K
+              </kbd>
+            </button>
+
+            <a
+              href="https://github.com/Nakshatra05/Deja-Vu-Memories"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-medium transition-all duration-200"
+              style={{ color: "var(--text-muted)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--text)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--text-muted)";
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Github className="h-4 w-4" style={{ color: "var(--accent-orange)" }} />
+              GitHub
+            </a>
+
+            <div className="px-2 pt-2 pb-2">
+              <Link
+                to="/memories"
+                onClick={() => setMobileOpen(false)}
+                className="dv-btn-primary w-full justify-center h-[44px]"
+                style={{ borderRadius: "12px", fontSize: "14px" }}
+              >
+                <Brain className="h-4 w-4 mr-2" />
+                Open Your Vault
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
 
-/* ─── Brain Stats ─────────────────────────────────────────── */
+/* ─── Brain Stats (§7.2 stat pills) ──────────────────────── */
 
 function BrainStats({ memories, recalls }: { memories: Memory[]; recalls: number }) {
   const topTag = useMemo(() => {
     const counts: Record<string, number> = {};
-    memories.forEach((m) => m.tags?.forEach((t) => { counts[t] = (counts[t] || 0) + 1; }));
+    memories.forEach((m) =>
+      m.tags?.forEach((t) => {
+        counts[t] = (counts[t] || 0) + 1;
+      }),
+    );
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
     return sorted[0]?.[0] ?? "---";
   }, [memories]);
 
   const stats = [
-    { icon: Brain, label: "Memories", value: memories.length, gradient: "from-primary/20 to-primary/5", iconColor: "text-primary" },
-    { icon: Zap, label: "Recalls", value: recalls, gradient: "from-recall/20 to-recall/5", iconColor: "text-[oklch(0.55_0.14_60)]" },
-    { icon: Tag, label: "Top tag", value: topTag, gradient: "from-muted-foreground/10 to-transparent", iconColor: "text-muted-foreground" },
-    { icon: Flame, label: "Streak", value: "1 day", gradient: "from-recall/15 to-recall/5", iconColor: "text-recall" },
+    { icon: Brain, label: "Memories", value: memories.length },
+    { icon: Zap, label: "Recalls", value: recalls },
+    { icon: Tag, label: "Top tag", value: topTag },
+    { icon: Flame, label: "Streak", value: "1 day" },
   ];
 
   return (
-    <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-      {stats.map((s, i) => (
-        <Card key={i} className="group relative overflow-hidden rounded-2xl border-border/40 bg-card/40 transition-colors hover:bg-card/60">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className={cn("rounded-xl bg-gradient-to-br p-2.5 transition-transform duration-300 group-hover:scale-105", s.gradient)}>
-              <s.icon className={cn("h-5 w-5", s.iconColor)} />
+    <StaggerReveal className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4" staggerChildren={0.07}>
+      {stats.map((s) => (
+        <div
+          key={s.label}
+          className="group flex items-center gap-4 rounded-2xl p-5 transition-all duration-200"
+          style={{
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid var(--line)",
+            borderRadius: "16px",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "rgba(255,109,41,0.25)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--line)";
+          }}
+        >
+          <div
+            className="grid h-[44px] w-[44px] place-items-center rounded-xl"
+            style={{
+              background: "rgba(255,109,41,0.1)",
+            }}
+          >
+            <s.icon className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
+          </div>
+          <div>
+            <div
+              className="text-2xl font-bold tabular-nums leading-none"
+              style={{ color: "var(--text)" }}
+            >
+              {s.value}
             </div>
-            <div>
-              <div className="font-display text-2xl font-semibold tabular-nums leading-none">{s.value}</div>
-              <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+            <div className="text-micro-label mt-1" style={{ color: "var(--text-muted)" }}>
+              {s.label}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ))}
-    </div>
+    </StaggerReveal>
   );
 }
 
-/* ─── Mascot ──────────────────────────────────────────────── */
+/* ─── Mascot (premium glowing companion) ──────────────────── */
 
-function Mascot({ state, className = "w-24 h-24 md:w-32 md:h-32" }: { state: MascotState; className?: string }) {
+function Mascot({
+  state,
+  className = "w-28 h-28 md:w-36 md:h-36",
+  size,
+}: {
+  state: MascotState;
+  className?: string;
+  size?: number;
+}) {
   const [hovered, setHovered] = useState(false);
 
   const bubble: Record<MascotState, string> = {
@@ -526,23 +1007,32 @@ function Mascot({ state, className = "w-24 h-24 md:w-32 md:h-32" }: { state: Mas
   const glow = state === "recall" || hovered;
   const bounce = state === "saved" || state === "recall" || hovered;
 
+  const containerStyle: React.CSSProperties = size ? { width: size, height: size } : {};
+
   return (
     <div
-      className={cn("relative flex flex-col items-center", className)}
+      className={cn("relative flex flex-col items-center", !size && className)}
+      style={containerStyle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* Glow layer behind mascot */}
       <div
-        className="relative flex items-center justify-center rounded-full w-full h-full"
+        className="absolute inset-0 rounded-full"
         style={{
           background:
             state === "recall"
-              ? "radial-gradient(circle, oklch(0.95 0.12 75 / 0.9), transparent 70%)"
-              : "radial-gradient(circle, oklch(0.94 0.03 300 / 0.6), transparent 70%)",
+              ? "radial-gradient(circle, rgba(255,109,41,0.5), transparent 65%)"
+              : glow
+                ? "radial-gradient(circle, rgba(255,109,41,0.3), transparent 65%)"
+                : "radial-gradient(circle, rgba(255,109,41,0.1), transparent 70%)",
           transition: "background 400ms ease",
+          animation: state === "idle" ? "glowDrift 8s ease-in-out infinite alternate" : "none",
         }}
-      >
-        <div className={cn("w-[92%] h-[92%]", hovered ? "animate-squash origin-bottom" : "")}>
+      />
+
+      <div className="relative flex items-center justify-center w-full h-full">
+        <div className={cn("w-[85%] h-[85%]", hovered ? "animate-squash origin-bottom" : "")}>
           <img
             src={mascotSrc}
             alt="Déjà Vu mascot"
@@ -551,49 +1041,60 @@ function Mascot({ state, className = "w-24 h-24 md:w-32 md:h-32" }: { state: Mas
               transform: bounce ? "translateY(-4px) scale(1.03)" : "translateY(0) scale(1)",
               transition: "transform 400ms cubic-bezier(0.2,0.9,0.3,1.3)",
               filter: glow
-                ? "drop-shadow(0 0 18px oklch(0.85 0.15 70 / 0.75))"
-                : "drop-shadow(0 4px 12px oklch(0.3 0.06 300 / 0.15))",
+                ? "drop-shadow(0 0 24px rgba(255,109,41,0.7))"
+                : "drop-shadow(0 4px 12px rgba(0,0,0,0.25))",
             }}
           />
         </div>
         {state === "listening" && (
           <span
             aria-hidden
-            className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-primary"
-            style={{ animation: "pulse-soft 1.2s ease-in-out infinite" }}
+            className="absolute -right-1 -top-1 h-3 w-3 rounded-full"
+            style={{
+              background: "var(--accent-orange)",
+              animation: "pulseSoft 1.3s ease-in-out infinite",
+            }}
           />
         )}
         {state === "recall" && (
           <>
             <span
               aria-hidden
-              className="absolute -right-2 -top-2 rounded-full bg-recall px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-recall-foreground"
-              style={{ animation: "rise 0.4s cubic-bezier(0.2,0.9,0.3,1.3)" }}
+              className="absolute -right-2 -top-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{
+                background: "var(--accent-orange)",
+                color: "var(--accent-ink)",
+                animation: "panelEnter 0.4s cubic-bezier(0.16,1,0.3,1)",
+              }}
             >
               !
             </span>
             <span
               aria-hidden
-              className="absolute left-0 top-0 h-4 w-4 animate-sparkle text-recall"
+              className="absolute left-0 top-0 h-4 w-4 animate-sparkle"
+              style={{ color: "var(--accent-orange)" }}
             >
-              *
+              ✦
             </span>
             <span
               aria-hidden
-              className="absolute bottom-2 right-4 h-4 w-4 animate-sparkle text-recall"
-              style={{ animationDelay: "200ms" }}
+              className="absolute bottom-2 right-4 h-4 w-4 animate-sparkle"
+              style={{ animationDelay: "200ms", color: "var(--accent-orange)" }}
             >
-              *
+              ✦
             </span>
           </>
         )}
       </div>
       <div
         key={hovered ? "hovered" : "unhovered"}
-        className={cn(
-          "absolute -bottom-8 rounded-full bg-card/80 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm backdrop-blur whitespace-nowrap",
-          "animate-in fade-in slide-in-from-top-2 duration-300",
-        )}
+        className="absolute -bottom-7 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap"
+        style={{
+          background: "var(--panel)",
+          border: "1px solid var(--line)",
+          color: "var(--text-muted)",
+          animation: "panelEnter 300ms cubic-bezier(0.16,1,0.3,1)",
+        }}
       >
         {bubble[state]}
       </div>
@@ -601,7 +1102,7 @@ function Mascot({ state, className = "w-24 h-24 md:w-32 md:h-32" }: { state: Mas
   );
 }
 
-/* ─── QuickAdd ────────────────────────────────────────────── */
+/* ─── QuickAdd / Save-a-Thought (§7.3 glass panel) ────────── */
 
 function QuickAdd({
   value,
@@ -647,52 +1148,79 @@ function QuickAdd({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/80 backdrop-blur-md shadow-[var(--shadow-soft)]">
-      {/* Decorative gradient strip at top */}
+    <div
+      className="dv-glass-panel overflow-hidden"
+      style={{ animation: "panelEnter 460ms cubic-bezier(0.16,1,0.3,1) both" }}
+    >
+      {/* Orange accent top border */}
       <div
-        className="h-1.5 w-full"
+        className="h-[3px] w-full"
         style={{
-          background: "linear-gradient(90deg, var(--color-primary), var(--color-recall), var(--color-primary))",
+          background: watching
+            ? "linear-gradient(90deg, var(--accent-hot), var(--accent-orange), var(--accent-hot))"
+            : "linear-gradient(90deg, var(--accent-orange), transparent)",
           backgroundSize: "200% auto",
-          animation: watching ? "text-light-wave 4s linear infinite" : "none",
+          animation: watching ? "gradient-shift 4s linear infinite" : "none",
           opacity: watching ? 1 : 0.3,
           transition: "opacity 0.4s ease",
         }}
       />
 
-      <div className="p-6">
+      <div className="p-6 md:p-8">
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5">
-              <Sparkles className="h-5 w-5 text-primary" />
+            <div
+              className="grid h-[44px] w-[44px] place-items-center rounded-xl"
+              style={{ background: "rgba(255,109,41,0.12)" }}
+            >
+              <Sparkles className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
             </div>
             <div>
-              <h3 className="font-display text-xl leading-tight">Save a thought</h3>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Quick save · stored locally</p>
+              <h3
+                className="text-xl font-bold leading-tight"
+                style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
+              >
+                Save a thought
+              </h3>
+              <p className="text-micro-label" style={{ color: "var(--text-muted)" }}>
+                Quick save · stored locally
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={onToggleWatch}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium transition-all duration-300",
-                watching
-                  ? "border border-recall/30 bg-recall/10 text-recall-foreground shadow-sm"
-                  : "border border-border bg-muted/50 text-muted-foreground",
-              )}
+              className={cn("dv-pill dv-pill--interactive", watching && "dv-pill--active")}
+              style={{ padding: "6px 14px" }}
             >
               <span
-                className={cn("h-2 w-2 rounded-full transition-colors", watching ? "bg-recall" : "bg-muted-foreground/50")}
-                style={watching ? { animation: "pulse-soft 2.4s ease-in-out infinite" } : undefined}
+                className="h-2 w-2 rounded-full"
+                style={{
+                  background: watching ? "var(--accent-orange)" : "var(--text-muted)",
+                  animation: watching ? "pulseSoft 1.3s ease-in-out infinite" : "none",
+                }}
               />
               {watching ? (
-                <><Eye className="h-3.5 w-3.5" /> Watching</>
+                <>
+                  <Eye className="h-3.5 w-3.5" /> Watching
+                </>
               ) : (
-                <><EyeOff className="h-3.5 w-3.5" /> Paused</>
+                <>
+                  <EyeOff className="h-3.5 w-3.5" /> Paused
+                </>
               )}
             </button>
-            <Mascot state={mascotState === "saving" || mascotState === "saved" ? mascotState : "saving"} size={52} />
+            <div
+              className="group dv-logo-badge overflow-hidden flex items-center justify-center transition-all duration-300 hover:bg-[rgba(255,109,41,0.15)]"
+              style={{ width: 36, height: 36, borderRadius: "50%" }}
+            >
+              <img
+                src={mascotSrc}
+                alt="mascot"
+                className="relative z-10 w-7 h-7 drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"
+              />
+            </div>
           </div>
         </div>
 
@@ -703,16 +1231,34 @@ function QuickAdd({
           onKeyDown={handleKeyDown}
           placeholder="What's on your mind? Anything useful — a fix, a fact, a preference..."
           rows={3}
-          className="w-full resize-none rounded-xl border border-input/60 bg-background/50 px-4 py-3.5 text-[15px] leading-relaxed placeholder:text-muted-foreground/50 focus:border-ring focus:bg-background/80 focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all duration-200"
+          className="dv-input resize-none"
+          style={{ borderRadius: "14px" }}
         />
 
         {/* Tags */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Tags className="h-3.5 w-3.5 text-muted-foreground/60" />
+          <Tags className="h-3.5 w-3.5" style={{ color: "var(--text-muted)", opacity: 0.6 }} />
           {tags.map((t) => (
-            <span key={t} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            <span
+              key={t}
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={{
+                background: "rgba(255,109,41,0.14)",
+                color: "var(--accent-soft)",
+              }}
+            >
               {t}
-              <button onClick={() => removeTag(t)} className="rounded-full p-0.5 hover:bg-primary/20 transition-colors">
+              <button
+                onClick={() => removeTag(t)}
+                className="rounded-full p-0.5 transition-colors"
+                style={{ color: "var(--accent-soft)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,109,41,0.2)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -723,21 +1269,37 @@ function QuickAdd({
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={handleTagKeyDown}
             placeholder="Add tags..."
-            className="min-w-[80px] flex-1 bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none"
+            className="min-w-[80px] flex-1 bg-transparent text-sm focus:outline-none"
+            style={{ color: "var(--text)" }}
           />
         </div>
 
         {/* Footer */}
-        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-border/40 pt-4 gap-4 sm:gap-0">
-          <span className="text-[10px] sm:text-xs text-muted-foreground/70">
-            <kbd className="hidden sm:inline-block rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> <span className="hidden sm:inline">to save · </span>
-            <kbd className="hidden sm:inline-block rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> <span className="hidden sm:inline">newline</span>
+        <div
+          className="mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between pt-5 gap-4 sm:gap-0"
+          style={{ borderTop: "1px solid var(--line)" }}
+        >
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <kbd
+              className="hidden sm:inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+              style={{ background: "rgba(255,255,255,0.07)", color: "var(--text-muted-strong)" }}
+            >
+              Enter
+            </kbd>
+            <span className="hidden sm:inline"> to save · </span>
+            <kbd
+              className="hidden sm:inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+              style={{ background: "rgba(255,255,255,0.07)", color: "var(--text-muted-strong)" }}
+            >
+              Shift+Enter
+            </kbd>
+            <span className="hidden sm:inline"> newline</span>
             <span className="sm:hidden">Tap save to store locally</span>
           </span>
           <button
             onClick={onSubmit}
             disabled={value.trim().length < 3}
-            className="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 sm:py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:opacity-90 active:scale-[0.97] disabled:opacity-30 disabled:shadow-none"
+            className="dv-btn-primary w-full sm:w-auto"
           >
             <Send className="h-3.5 w-3.5" />
             Save
@@ -748,7 +1310,7 @@ function QuickAdd({
   );
 }
 
-/* ─── How It Works ────────────────────────────────────────── */
+/* ─── How It Works (§7.5) ────────────────────────────────── */
 
 function HowItWorks({
   clipboard,
@@ -770,16 +1332,32 @@ function HowItWorks({
       description:
         "Jot down anything useful — a fix, a fact, a preference. It takes 5 seconds and lives locally on your device forever.",
       visual: (
-        <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur">
+        <div className="dv-card p-6">
           <div className="mb-3 flex items-center gap-3">
-            <div className="rounded-full bg-primary/10 p-2">
-              <Brain className="h-5 w-5 text-primary" />
+            <div
+              className="grid h-[40px] w-[40px] place-items-center rounded-xl"
+              style={{ background: "rgba(255,109,41,0.1)" }}
+            >
+              <Brain className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
             </div>
-            <span className="text-sm font-medium">Your thought is saved locally</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+              Your thought is saved locally
+            </span>
           </div>
           <div className="space-y-2">
-            {["Client Acme hates the color blue — use warm neutrals", "React useEffect cleanup pattern for subscriptions"].map((t) => (
-              <div key={t} className="rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+            {[
+              "Client Acme hates the color blue — use warm neutrals",
+              "React useEffect cleanup pattern for subscriptions",
+            ].map((t) => (
+              <div
+                key={t}
+                className="rounded-xl px-4 py-3 text-sm"
+                style={{
+                  background: "var(--surface-raised)",
+                  border: "1px solid var(--line)",
+                  color: "var(--text-muted-strong)",
+                }}
+              >
                 {t}
               </div>
             ))}
@@ -808,20 +1386,36 @@ function HowItWorks({
       description:
         "A gentle notification surfaces the relevant memory. No search bar. No prompt. It just appears when you need it.",
       visual: (
-        <div className="rounded-2xl border border-recall/40 bg-card p-4 shadow-[var(--shadow-glow)]">
+        <div
+          className="dv-glass-panel p-5"
+          style={{ borderRadius: "18px", boxShadow: "0 28px 80px rgba(0,0,0,0.44)" }}
+        >
           <div className="flex items-start gap-3">
-            <img src={mascotSrc} alt="" width={44} height={44} className="shrink-0 drop-shadow" />
+            <img
+              src={mascotSrc}
+              alt=""
+              width={36}
+              height={36}
+              className="shrink-0"
+              style={{ filter: "drop-shadow(0 0 12px rgba(255,109,41,0.4))" }}
+            />
             <div>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-recall-foreground">
+              <div
+                className="mb-1 flex items-center gap-2 text-micro-label"
+                style={{ color: "var(--accent-soft)" }}
+              >
                 Déjà Vu
-                <span className="ml-2 rounded-full bg-recall/20 px-1.5 py-0.5 font-mono text-[9px] tabular-nums">
+                <span
+                  className="rounded-full px-1.5 py-0.5 font-mono text-[9px] tabular-nums"
+                  style={{ background: "rgba(255,109,41,0.14)", color: "var(--accent-soft)" }}
+                >
                   0.87
                 </span>
               </div>
-              <p className="text-sm leading-snug text-foreground">
+              <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>
                 Client Acme hates the color blue — use warm neutrals...
               </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
                 triggered by: <span className="font-mono">"acme brand guidelines"</span>
               </p>
             </div>
@@ -832,36 +1426,58 @@ function HowItWorks({
   ];
 
   return (
-    <section id="how-it-works" className="mt-20">
-      <div className="mb-12 text-center">
-        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          How it works
-        </p>
-        <h2 className="font-display text-3xl md:text-4xl">Two loops, zero friction</h2>
-      </div>
-      <div className="space-y-20">
+    <section id="how-it-works" className="mt-24">
+      <ScrollReveal>
+        <div className="mb-14 text-center">
+          <p className="text-ui-label mb-3" style={{ color: "var(--text-muted)" }}>
+            How it works
+          </p>
+          <h2 className="text-section-heading md:text-[32px]" style={{ color: "var(--text)" }}>
+            Two loops, zero friction
+          </h2>
+        </div>
+      </ScrollReveal>
+      <div className="space-y-24">
         {steps.map((step, i) => (
-          <div
-            key={step.num}
-            className={cn(
-              "grid items-center gap-8 md:grid-cols-2",
-              i % 2 === 1 && "md:[direction:rtl] md:[&>*]:[direction:ltr]",
-            )}
-          >
-            <div>
-              <span className="font-display text-5xl text-muted-foreground/20">{step.num}</span>
-              <h3 className="mt-2 font-display text-2xl">{step.title}</h3>
-              <p className="mt-3 leading-relaxed text-muted-foreground">{step.description}</p>
+          <ScrollReveal key={step.num} delay={i * 0.12} scale={0.97}>
+            <div
+              className={cn(
+                "grid items-center gap-10 md:grid-cols-2",
+                i % 2 === 1 && "md:[direction:rtl] md:[&>*]:[direction:ltr]",
+              )}
+            >
+              <div>
+                <span
+                  className="block text-6xl font-bold"
+                  style={{
+                    color: "var(--text)",
+                    opacity: 0.08,
+                    letterSpacing: "-0.04em",
+                    lineHeight: 1,
+                  }}
+                >
+                  {step.num}
+                </span>
+                <h3 className="mt-3 text-section-heading" style={{ color: "var(--text)" }}>
+                  {step.title}
+                </h3>
+                <p
+                  className="mt-3 text-card-body leading-relaxed"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {step.description}
+                </p>
+              </div>
+              <div>{step.visual}</div>
             </div>
-            <div>{step.visual}</div>
-          </div>
+          </ScrollReveal>
         ))}
       </div>
     </section>
   );
 }
 
-/* ─── ClipboardSimulator ──────────────────────────────────── */
+/* ─── ClipboardSimulator / Try-It (§7.6) ──────────────────── */
 
 function ClipboardSimulator({
   value,
@@ -877,29 +1493,43 @@ function ClipboardSimulator({
   onSample: (s: string) => void;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="dv-card p-5 md:p-6 overflow-hidden">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Try it out</div>
-          <h3 className="font-display text-xl">Copy something</h3>
+          <div className="text-micro-label" style={{ color: "var(--text-muted)" }}>
+            Try it out
+          </div>
+          <h3
+            className="text-xl font-bold"
+            style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
+          >
+            Copy something
+          </h3>
         </div>
-        <Mascot state={mascotState === "recall" || mascotState === "listening" ? mascotState : "idle"} size={56} />
+        <Mascot
+          state={mascotState === "recall" || mascotState === "listening" ? mascotState : "idle"}
+          size={56}
+        />
       </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Paste or type what you'd copy on your machine..."
         rows={4}
-        className="w-full resize-none rounded-lg border border-input bg-background/60 px-4 py-3 font-mono text-[13px] leading-relaxed placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+        className="dv-input resize-none font-mono text-[13px]"
+        style={{ borderRadius: "12px" }}
       />
-      <div className="mt-3">
-        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Try one</div>
+      <div className="mt-4">
+        <div className="text-micro-label mb-2" style={{ color: "var(--text-muted)" }}>
+          Try one
+        </div>
         <div className="flex flex-wrap gap-2">
           {SAMPLE_COPIES.map((s) => (
             <button
               key={s}
               onClick={() => onSample(s)}
-              className="rounded-full border border-border bg-background/50 px-3 py-1 text-xs text-foreground/80 transition hover:border-ring hover:bg-accent"
+              className="dv-pill dv-pill--interactive text-xs"
+              style={{ fontSize: "12px" }}
             >
               {s}
             </button>
@@ -907,21 +1537,26 @@ function ClipboardSimulator({
         </div>
       </div>
       {lastCheck && (
-        <div className="mt-4 flex items-center justify-between rounded-lg border border-dashed border-border bg-background/40 px-3 py-2 text-xs">
-          <span className="text-muted-foreground">
+        <div
+          className="mt-4 flex items-center justify-between rounded-xl px-4 py-3 text-xs"
+          style={{
+            background: "rgba(255,255,255,0.025)",
+            border: "1px dashed var(--line-strong)",
+          }}
+        >
+          <span style={{ color: "var(--text-muted)" }}>
             {lastCheck.matched ? "Match" : "No match"} · score{" "}
-            <span className="font-mono tabular-nums text-foreground">
+            <span className="font-mono tabular-nums" style={{ color: "var(--text)" }}>
               {lastCheck.score.toFixed(2)}
             </span>{" "}
             · threshold <span className="font-mono tabular-nums">{RECALL_THRESHOLD}</span>
           </span>
           <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest",
-              lastCheck.matched
-                ? "bg-recall/20 text-[oklch(0.4_0.12_60)]"
-                : "bg-muted text-muted-foreground",
-            )}
+            className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest"
+            style={{
+              background: lastCheck.matched ? "rgba(255,109,41,0.14)" : "rgba(255,255,255,0.04)",
+              color: lastCheck.matched ? "var(--accent-soft)" : "var(--text-muted)",
+            }}
           >
             {lastCheck.matched ? "recall" : "silent"}
           </span>
@@ -931,7 +1566,7 @@ function ClipboardSimulator({
   );
 }
 
-/* ─── Memory List + Card ──────────────────────────────────── */
+/* ─── Memory List + Card (§7.8) ───────────────────────────── */
 
 function MemoryList({
   memories,
@@ -942,19 +1577,55 @@ function MemoryList({
   onUpdate: (id: string, updates: Partial<Pick<Memory, "content" | "tags">>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const gridRef = useRef<HTMLUListElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: gridRef,
+    offset: ["start end", "end start"],
+  });
+  const driftRight = useTransform(scrollYProgress, [0, 0.5, 1], [-18, 12, 0]);
+  const driftLeft = useTransform(scrollYProgress, [0, 0.5, 1], [14, -12, 0]);
+
   if (memories.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">
+      <div
+        className="rounded-2xl p-8 text-center text-sm"
+        style={{
+          border: "1px dashed var(--line-strong)",
+          background: "rgba(255,255,255,0.015)",
+          color: "var(--text-muted)",
+        }}
+      >
         No memories match your search.
       </div>
     );
   }
   return (
-    <ul className="grid gap-3 sm:grid-cols-2">
-      {memories.map((m) => (
-        <MemoryCard key={m.id} memory={m} onUpdate={onUpdate} onDelete={onDelete} />
+    <motion.ul
+      ref={gridRef}
+      className="grid gap-4 sm:grid-cols-2"
+      initial={prefersReducedMotion ? false : "hidden"}
+      whileInView="show"
+      viewport={revealViewport}
+      variants={{
+        hidden: {},
+        show: {
+          transition: {
+            staggerChildren: prefersReducedMotion ? 0 : 0.07,
+          },
+        },
+      }}
+    >
+      {memories.map((m, i) => (
+        <MemoryCard
+          key={m.id}
+          memory={m}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          parallaxX={prefersReducedMotion ? undefined : i % 2 === 0 ? driftRight : driftLeft}
+        />
       ))}
-    </ul>
+    </motion.ul>
   );
 }
 
@@ -962,10 +1633,12 @@ function MemoryCard({
   memory,
   onUpdate,
   onDelete,
+  parallaxX,
 }: {
   memory: Memory;
   onUpdate: (id: string, updates: Partial<Pick<Memory, "content" | "tags">>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  parallaxX?: MotionValue<number>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(memory.content);
@@ -994,31 +1667,84 @@ function MemoryCard({
     await onDelete(memory.id);
   };
 
+  const cardStyle: MotionStyle = parallaxX ? { x: parallaxX } : {};
+
   return (
-    <li className="group relative rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-ring/50 hover:shadow-[var(--shadow-soft)]">
-      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span className="flex gap-1">
+    <motion.li
+      className="group dv-card relative p-4 md:p-5"
+      style={cardStyle}
+      variants={{
+        hidden: { opacity: 0, y: 18 },
+        show: { opacity: 1, y: 0 },
+      }}
+      transition={{ duration: 0.5, ease: revealEase }}
+    >
+      {/* Inset top highlight */}
+      <div
+        className="absolute top-0 left-4 right-4 h-px"
+        style={{
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)",
+        }}
+      />
+
+      <div className="mb-2 flex items-center justify-between">
+        <span className="flex gap-1.5">
           {memory.tags && memory.tags.length > 0 ? (
             memory.tags.map((t) => (
-              <span key={t} className="rounded-full bg-muted px-2 py-0.5">
+              <span
+                key={t}
+                className="text-micro-label rounded-full px-2.5 py-0.5"
+                style={{
+                  background: "rgba(255,109,41,0.1)",
+                  color: "var(--accent-soft)",
+                }}
+              >
                 {t}
               </span>
             ))
           ) : (
-            <span className="rounded-full bg-muted px-2 py-0.5">note</span>
+            <span
+              className="text-micro-label rounded-full px-2.5 py-0.5"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                color: "var(--text-muted)",
+              }}
+            >
+              note
+            </span>
           )}
         </span>
         <span className="flex items-center gap-2">
-          <span>{relTime(memory.createdAt)}</span>
+          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {relTime(memory.createdAt)}
+          </span>
           {!editing && (
-            <span className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+            <span className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
               <button
                 onClick={() => setEditing(true)}
                 disabled={busy}
                 aria-label="Edit memory"
-                className="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                className="grid h-[32px] w-[32px] place-items-center rounded-full transition-colors disabled:opacity-40"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                  e.currentTarget.style.color = "var(--text)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--text-muted)";
+                }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                 </svg>
@@ -1027,9 +1753,27 @@ function MemoryCard({
                 onClick={remove}
                 disabled={busy}
                 aria-label="Delete memory"
-                className="rounded-full p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                className="grid h-[32px] w-[32px] place-items-center rounded-full transition-colors disabled:opacity-40"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,143,143,0.1)";
+                  e.currentTarget.style.color = "var(--color-danger)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--text-muted)";
+                }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                 </svg>
               </button>
@@ -1044,34 +1788,42 @@ function MemoryCard({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                save();
+              }
               if (e.key === "Escape") cancel();
             }}
             autoFocus
             rows={3}
-            className="w-full resize-none rounded-lg border border-input bg-background/60 px-3 py-2 text-sm leading-relaxed focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+            className="dv-input resize-none text-sm"
+            style={{ borderRadius: "12px" }}
           />
           <div className="mt-2 flex justify-end gap-2">
             <button
               onClick={cancel}
               disabled={busy}
-              className="rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+              className="dv-btn-ghost text-xs disabled:opacity-40"
+              style={{ padding: "6px 14px" }}
             >
               Cancel
             </button>
             <button
               onClick={save}
               disabled={busy || draft.trim().length < 3}
-              className="rounded-full bg-primary px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition hover:opacity-90 disabled:opacity-30"
+              className="dv-btn-primary text-xs disabled:opacity-30"
+              style={{ padding: "6px 14px", borderRadius: "999px" }}
             >
               Save
             </button>
           </div>
         </div>
       ) : (
-        <p className="text-sm leading-relaxed text-foreground/90">{memory.content}</p>
+        <p className="text-card-body leading-relaxed" style={{ color: "var(--text-muted-strong)" }}>
+          {memory.content}
+        </p>
       )}
-    </li>
+    </motion.li>
   );
 }
 
@@ -1086,7 +1838,7 @@ function relTime(ts: number) {
   return `${d}d ago`;
 }
 
-/* ─── Features Grid ───────────────────────────────────────── */
+/* ─── Features Grid (§7.4) ───────────────────────────────── */
 
 function FeaturesGrid() {
   const features = [
@@ -1111,38 +1863,47 @@ function FeaturesGrid() {
   ];
 
   return (
-    <section id="features" className="mt-20">
-      <div className="mb-10 text-center">
-        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          Features
-        </p>
-        <h2 className="font-display text-3xl md:text-4xl">Built for the way you think</h2>
-      </div>
-      <div className="grid gap-6 md:grid-cols-3">
+    <section id="features" className="mt-24">
+      <ScrollReveal>
+        <div className="mb-12 text-center">
+          <p className="text-ui-label mb-3" style={{ color: "var(--text-muted)" }}>
+            Features
+          </p>
+          <h2 className="text-section-heading md:text-[32px]" style={{ color: "var(--text)" }}>
+            Built for the way you think
+          </h2>
+        </div>
+      </ScrollReveal>
+      <StaggerReveal className="grid gap-6 md:grid-cols-3" staggerChildren={0.09}>
         {features.map((f) => (
-          <Card
-            key={f.title}
-            className="group bg-card/60 backdrop-blur transition hover:border-ring/50 hover:shadow-[var(--shadow-soft)]"
-          >
-            <CardHeader>
-              <div className="mb-2 w-fit rounded-lg bg-primary/10 p-2.5">
-                <f.icon className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle className="font-display text-xl">{f.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-relaxed text-muted-foreground">{f.description}</p>
-            </CardContent>
-          </Card>
+          <div className="group dv-card p-6 md:p-7">
+            <div
+              className="mb-4 grid h-[44px] w-[44px] place-items-center rounded-xl"
+              style={{ background: "rgba(255,109,41,0.1)" }}
+            >
+              <f.icon className="h-5 w-5" style={{ color: "var(--accent-orange)" }} />
+            </div>
+            <h3
+              className="text-lg font-bold mb-2"
+              style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
+            >
+              {f.title}
+            </h3>
+            <p className="text-card-body leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              {f.description}
+            </p>
+          </div>
         ))}
-      </div>
+      </StaggerReveal>
     </section>
   );
 }
 
-/* ─── FAQ ──────────────────────────────────────────────────── */
+/* ─── FAQ (§7.9 — flat list, no card bg) ──────────────────── */
 
 function FAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
   const items = [
     {
       q: "Is my data sent anywhere?",
@@ -1171,81 +1932,185 @@ function FAQ() {
   ];
 
   return (
-    <section id="faq" className="mx-auto mt-20 max-w-2xl">
-      <div className="mb-10 text-center">
-        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          FAQ
-        </p>
-        <h2 className="font-display text-3xl md:text-4xl">Questions & answers</h2>
-      </div>
-      <Accordion type="single" collapsible className="w-full">
+    <section id="faq" className="mx-auto mt-24 max-w-2xl">
+      <ScrollReveal>
+        <div className="mb-12 text-center">
+          <p className="text-ui-label mb-3" style={{ color: "var(--text-muted)" }}>
+            FAQ
+          </p>
+          <h2 className="text-section-heading md:text-[32px]" style={{ color: "var(--text)" }}>
+            Questions & answers
+          </h2>
+        </div>
+      </ScrollReveal>
+      <div>
         {items.map((item, i) => (
-          <AccordionItem key={i} value={`faq-${i}`}>
-            <AccordionTrigger className="text-left font-medium">{item.q}</AccordionTrigger>
-            <AccordionContent className="leading-relaxed text-muted-foreground">
-              {item.a}
-            </AccordionContent>
-          </AccordionItem>
+          <ScrollReveal key={i} delay={i * 50}>
+            <div style={{ borderBottom: "1px solid var(--line)" }}>
+              <button
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full flex items-center justify-between py-5 text-left transition-colors"
+                style={{ color: "var(--text)" }}
+              >
+                <span
+                  className="text-[15px] font-semibold pr-4"
+                  style={{ letterSpacing: "-0.01em" }}
+                >
+                  {item.q}
+                </span>
+                <ChevronDown
+                  className="h-4 w-4 shrink-0 transition-transform duration-200"
+                  style={{
+                    color: "var(--text-muted)",
+                    transform: openIndex === i ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+              <div
+                style={{
+                  maxHeight: openIndex === i ? "200px" : "0px",
+                  overflow: "hidden",
+                  transition: "max-height 250ms ease",
+                }}
+              >
+                <p
+                  className="text-card-body pb-5 leading-relaxed"
+                  style={{ color: "var(--text-muted-strong)", paddingTop: "4px" }}
+                >
+                  {item.a}
+                </p>
+              </div>
+            </div>
+          </ScrollReveal>
         ))}
-      </Accordion>
+      </div>
     </section>
   );
 }
 
-/* ─── Footer ──────────────────────────────────────────────── */
+/* ─── Footer (§7.10) ─────────────────────────────────────── */
 
 function Footer() {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
-    <footer className="mt-20 border-t border-border pb-8 pt-8">
+    <motion.footer
+      className="mt-24 pb-8 pt-8"
+      style={{ borderTop: "1px solid var(--line)" }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={revealViewport}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.5, ease: revealEase }}
+    >
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 sm:flex-row sm:justify-between">
-        <div className="flex items-center gap-3">
-          <img src={mascotSrc} alt="" width={28} height={28} />
-          <span className="font-display text-lg">Déjà Vu</span>
+        <div
+          className="group flex items-center gap-3 cursor-pointer"
+          onClick={() => window.scrollTo(0, 0)}
+        >
+          <div
+            className="dv-logo-badge overflow-hidden flex items-center justify-center transition-all duration-300 group-hover:bg-[rgba(255,109,41,0.15)]"
+            style={{ width: 36, height: 36, borderRadius: "50%" }}
+          >
+            <img
+              src={mascotSrc}
+              alt=""
+              className="relative z-10 w-7 h-7 drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"
+            />
+          </div>
+          <span
+            className="text-lg font-bold transition-colors group-hover:text-white"
+            style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
+          >
+            Déjà Vu
+          </span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-4 text-[13px]" style={{ color: "var(--text-muted)" }}>
           <span>Built with care, stored locally</span>
           <a
             href="https://github.com/Nakshatra05/Deja-Vu-Memories"
             target="_blank"
             rel="noopener noreferrer"
-            className="transition hover:text-foreground"
+            className="transition-colors"
+            style={{ color: "var(--text-muted)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
           >
             <Github className="h-4 w-4" />
           </a>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }
 
-/* ─── Recall Toast ────────────────────────────────────────── */
+/* ─── Recall Toast (§7.7 — glass panel lite) ──────────────── */
 
 function RecallToast({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   return (
     <div
-      className="pointer-events-auto overflow-hidden rounded-2xl border border-recall/40 bg-card shadow-[var(--shadow-glow)]"
-      style={{ animation: "rise 0.4s cubic-bezier(0.2,0.9,0.3,1.3)" }}
+      className="pointer-events-auto overflow-hidden dv-glass-panel"
+      style={{
+        borderRadius: "18px",
+        boxShadow: "0 28px 80px rgba(0,0,0,0.44), 0 0 0 1px rgba(255,109,41,0.15)",
+        animation: "panelEnter 460ms cubic-bezier(0.16,1,0.3,1)",
+      }}
     >
       <div className="flex items-start gap-3 p-4">
-        <img src={mascotSrc} alt="" width={44} height={44} className="shrink-0 drop-shadow" />
+        <img
+          src={mascotSrc}
+          alt=""
+          width={32}
+          height={32}
+          className="shrink-0"
+          style={{ filter: "drop-shadow(0 0 12px rgba(255,109,41,0.5))" }}
+        />
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[oklch(0.5_0.14_60)]">
+          <div
+            className="mb-1 flex items-center gap-2 text-micro-label"
+            style={{ color: "var(--accent-soft)" }}
+          >
             Déjà Vu
-            <span className="rounded-full bg-recall/20 px-1.5 py-0.5 font-mono text-[9px] tabular-nums text-[oklch(0.4_0.12_60)]">
+            <span
+              className="rounded-full px-1.5 py-0.5 font-mono text-[9px] tabular-nums"
+              style={{ background: "rgba(255,109,41,0.14)", color: "var(--accent-soft)" }}
+            >
               {toast.score.toFixed(2)}
             </span>
           </div>
-          <p className="text-sm leading-snug text-foreground">{toast.memory.content}</p>
-          <p className="mt-1 truncate text-[11px] text-muted-foreground">
+          <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>
+            {toast.memory.content}
+          </p>
+          <p className="mt-1 truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
             triggered by: <span className="font-mono">"{toast.query}"</span>
           </p>
         </div>
         <button
           onClick={onDismiss}
-          className="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          className="grid h-[28px] w-[28px] place-items-center rounded-full transition-colors"
           aria-label="Dismiss"
+          style={{ color: "var(--text-muted)" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+            e.currentTarget.style.color = "var(--text)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--text-muted)";
+          }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
@@ -1311,10 +2176,12 @@ function CommandPalette({
           <CommandGroup heading="Memories">
             {memories.slice(0, 10).map((m) => (
               <CommandItem key={m.id} onSelect={() => onOpenChange(false)}>
-                <Search className="mr-2 h-4 w-4 text-muted-foreground" />
+                <Search className="mr-2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
                 <span className="truncate">{m.content}</span>
                 {m.tags && m.tags.length > 0 && (
-                  <span className="ml-auto text-xs text-muted-foreground">{m.tags[0]}</span>
+                  <span className="ml-auto text-xs" style={{ color: "var(--text-muted)" }}>
+                    {m.tags[0]}
+                  </span>
                 )}
               </CommandItem>
             ))}
