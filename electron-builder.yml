@@ -1,0 +1,21 @@
+appId: com.dejavu.app
+productName: Déjà Vu
+directories:
+  output: release/${version}
+files:
+  - dist-electron/**/*
+  - dist/client/**/*
+  - package.json
+win:
+  target:
+    - nsis
+  icon: src/assets/mascot.png
+mac:
+  target:
+    - dmg
+  icon: src/assets/mascot.png
+  category: public.app-category.productivity
+linux:
+  target:
+    - AppImage
+  icon: src/assets/mascot.png

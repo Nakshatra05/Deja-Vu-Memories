@@ -103,9 +103,9 @@ function MemoriesPage() {
       {/* ── Nav ───────────────────────────────────────────── */}
       <MemoriesNav dark={dark} onToggleDark={toggleDark} />
 
-      <main className="mx-auto max-w-6xl px-6 pb-24 pt-6">
+      <main className="mx-auto max-w-6xl px-4 md:px-6 pb-24 pt-6">
         {/* ── Hero header with mascot ─────────────────────── */}
-        <section className="mb-10 grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
+        <section className="mb-10 flex flex-col-reverse md:grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -131,7 +131,7 @@ function MemoriesPage() {
 
         {/* ── Stats bar ──────────────────────────────────────── */}
         {memories && memories.length > 0 && (
-          <section className="mb-8 grid grid-cols-3 gap-4">
+          <section className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card/70 p-4 backdrop-blur-md">
               <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 p-2.5">
                 <Brain className="h-5 w-5 text-primary" />
@@ -177,7 +177,7 @@ function MemoriesPage() {
         {/* ── Search & Filters ───────────────────────────────── */}
         {memories && memories.length > 0 && (
           <section className="mb-8 space-y-4">
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                 <input
@@ -294,9 +294,9 @@ function MemoriesNav({
           : "bg-background/40 backdrop-blur-sm",
       )}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-5">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-8 py-3 md:py-5">
         {/* Left: Back + Logo */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <Link
             to="/"
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card/80 text-muted-foreground shadow-sm transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95"

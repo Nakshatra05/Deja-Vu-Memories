@@ -3,13 +3,16 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "electron:dev": "concurrently \"vite dev --port 8080\" \"wait-on tcp:8080 && tsc -p electron/tsconfig.json && electron .\"",
+    "electron:build": "tsc -p electron/tsconfig.json && vite build && electron-builder"
   },
   "dependencies": {
     "@fontsource/instrument-serif": "^5.2.8",
@@ -77,6 +80,9 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^10.0.3",
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -87,6 +93,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "wait-on": "^9.0.10"
   }
 }

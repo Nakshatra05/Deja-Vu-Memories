@@ -6,8 +6,11 @@ import confetti from "canvas-confetti";
 import { toast } from "sonner";
 import {
   Search, X, Moon, Sun, Github, Brain, Zap, Tag, Flame,
-  ShieldCheck, Sparkles, Tags, Plus, Eye, EyeOff,
+  ShieldCheck, Sparkles, Tags, Plus, Eye, EyeOff, Menu, Send,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMemories } from "../hooks/use-memories";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +64,16 @@ function useDarkMode() {
   return { dark, toggle };
 }
 
+declare global {
+  interface Window {
+    electronAPI?: {
+      platform: string;
+      isElectron: boolean;
+      onClipboardChange: (callback: (text: string) => void) => void;
+    };
+  }
+}
+
 /* ─── Main page ───────────────────────────────────────────── */
 
 function Index() {
@@ -81,6 +94,15 @@ function Index() {
   const typingDebounceRef = useRef<number | null>(null);
   const lastSimilarNotifyRef = useRef("");
 
+  // Listen to real OS clipboard if running in Electron
+  useEffect(() => {
+    if (window.electronAPI?.onClipboardChange) {
+      window.electronAPI.onClipboardChange((text) => {
+        setClipboard(text);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (!watching) return;
     const value = clipboard.trim();
@@ -97,6 +119,24 @@ function Index() {
         setLastCheck({ query: value, score: best.score, matched: true });
         const id = ++toastIdRef.current;
         setToasts((t) => [...t, { id, memory: best.memory, score: best.score, query: value }]);
+        
+        // Trigger native OS notification
+        if (window.electronAPI?.isElectron && Notification.permission === "granted") {
+          new Notification("Déjà Vu found a memory", {
+            body: best.memory.content,
+            icon: mascotSrc,
+          });
+        } else if (window.electronAPI?.isElectron && Notification.permission !== "denied") {
+          Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+              new Notification("Déjà Vu found a memory", {
+                body: best.memory.content,
+                icon: mascotSrc,
+              });
+            }
+          });
+        }
+
         window.setTimeout(() => {
           setToasts((t) => t.filter((x) => x.id !== id));
         }, 6500);
@@ -206,9 +246,9 @@ function Index() {
         onOpenCmd={() => setCmdOpen(true)}
       />
 
-      <main className="mx-auto max-w-6xl px-6 pb-24 pt-6">
+      <main className="mx-auto max-w-6xl px-4 md:px-6 pb-24 pt-6">
         {/* ── Hero ─────────────────────────────────────────── */}
-        <section className="mb-10 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
+        <section className="mb-10 flex flex-col-reverse md:grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
           <div>
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-recall" />
@@ -226,7 +266,9 @@ function Index() {
               your machine — Déjà Vu quietly surfaces it. No search bar. No prompt.
             </p>
           </div>
-          <Mascot state={mascot} size={160} />
+          <div className="flex justify-center md:justify-end">
+            <Mascot state={mascot} className="w-32 h-32 md:w-40 md:h-40" />
+          </div>
         </section>
 
         {/* ── Brain Stats ──────────────────────────────────── */}
@@ -256,8 +298,8 @@ function Index() {
         />
 
         {/* ── Your Memories ────────────────────────────────── */}
-        <section className="mt-20" id="memories">
-          <div className="mb-4 flex items-baseline justify-between">
+        <section className="mt-12 md:mt-20" id="memories">
+          <div className="mb-4 flex flex-col md:flex-row md:items-baseline justify-between gap-2">
             <h2 className="font-display text-2xl">Your memories</h2>
             <span className="text-xs uppercase tracking-widest text-muted-foreground">
               {memories.length} saved · Stored locally on this device
@@ -361,77 +403,72 @@ function NavBar({
           : "bg-background/40 backdrop-blur-sm",
       )}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-5">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-8 py-3 md:py-5">
         {/* ── Left: Logo ── */}
         <a href="#top" className="flex items-center gap-3.5">
-          <div className="relative grid h-12 w-12 place-items-center rounded-xl bg-foreground shadow-md">
+          <div className="relative grid h-10 w-10 md:h-12 md:w-12 place-items-center rounded-xl bg-foreground shadow-md">
             <img
               src={mascotSrc}
               alt=""
-              width={30}
-              height={30}
-              className="relative z-10 drop-shadow-sm"
+              className="relative z-10 w-6 h-6 md:w-8 md:h-8 drop-shadow-sm"
             />
             <span
               aria-hidden
               className="absolute inset-x-1 -bottom-0.5 h-3 rounded-full bg-recall opacity-60 blur-[6px]"
             />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Déjà Vu</span>
+          <span className="text-base md:text-lg font-semibold tracking-tight">Déjà Vu</span>
         </a>
-
-        {/* ── Center: Nav links in a single bordered capsule ── */}
-        <div className="hidden rounded-full border border-border/60 bg-muted/30 px-2 py-1.5 md:flex">
-          {[
-            { label: "How it works", href: "#how-it-works" },
-            { label: "Features", href: "#features" },
-            { label: "FAQ", href: "#faq" },
-          ].map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded-full px-5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
-          <Link
-            to="/memories"
-            className="rounded-full px-5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            All Memories
-          </Link>
-        </div>
 
         {/* ── Right: Actions ── */}
         <div className="flex items-center gap-3">
-          {/* Dark mode toggle */}
           <button
             onClick={onToggleDark}
-            className="rounded-full p-2.5 text-muted-foreground transition-colors hover:text-foreground"
+            className="hidden md:block rounded-full p-2.5 text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Toggle dark mode"
           >
             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-
-          {/* GitHub — icon + text, outlined capsule */}
-          <a
-            href="https://github.com/Nakshatra05/Deja-Vu-Memories"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden items-center gap-2 rounded-full border border-border/60 px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:inline-flex"
+          
+          <button
+            onClick={onOpenCmd}
+            className="hidden md:flex h-10 items-center gap-2 rounded-full bg-muted/50 px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
           >
-            <Github className="h-5 w-5" />
-            GitHub
-          </a>
+            <Search className="h-4 w-4" />
+            <span>Search</span>
+            <kbd className="hidden md:inline-flex ml-2 items-center gap-1 rounded bg-background px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </button>
 
-          {/* CTA — solid pill */}
-          <a
-            href="#quick-add"
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
-          >
-            Get started
-          </a>
+          {/* Mobile Menu Dropdown */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="rounded-full p-2 text-muted-foreground hover:text-foreground focus:outline-none">
+                <Menu className="h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-background/95 backdrop-blur-xl border-border/50">
+                <DropdownMenuItem onClick={onOpenCmd}>
+                  <Search className="mr-2 h-4 w-4" /> Search
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleDark}>
+                  {dark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />} Toggle Theme
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#how-it-works">How it works</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#features">Features</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#faq">FAQ</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/memories">All Memories</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </nav>
@@ -449,16 +486,16 @@ function BrainStats({ memories, recalls }: { memories: Memory[]; recalls: number
   }, [memories]);
 
   const stats = [
-    { icon: Brain, label: "Memories", value: memories.length, gradient: "from-primary/20 to-primary/5", iconColor: "text-primary", borderGlow: "hover:border-primary/40" },
-    { icon: Zap, label: "Recalls", value: recalls, gradient: "from-recall/20 to-recall/5", iconColor: "text-[oklch(0.55_0.14_60)]", borderGlow: "hover:border-recall/40" },
-    { icon: Tag, label: "Top tag", value: topTag, gradient: "from-muted-foreground/10 to-transparent", iconColor: "text-muted-foreground", borderGlow: "hover:border-muted-foreground/30" },
-    { icon: Flame, label: "Streak", value: "1 day", gradient: "from-recall/15 to-recall/5", iconColor: "text-recall", borderGlow: "hover:border-recall/30" },
+    { icon: Brain, label: "Memories", value: memories.length, gradient: "from-primary/20 to-primary/5", iconColor: "text-primary" },
+    { icon: Zap, label: "Recalls", value: recalls, gradient: "from-recall/20 to-recall/5", iconColor: "text-[oklch(0.55_0.14_60)]" },
+    { icon: Tag, label: "Top tag", value: topTag, gradient: "from-muted-foreground/10 to-transparent", iconColor: "text-muted-foreground" },
+    { icon: Flame, label: "Streak", value: "1 day", gradient: "from-recall/15 to-recall/5", iconColor: "text-recall" },
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {stats.map((s) => (
-        <Card key={s.label} className={cn("group bg-card/70 backdrop-blur-md border-border/50 transition-all duration-300 hover:shadow-sm hover:-translate-y-px", s.borderGlow)}>
+    <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+      {stats.map((s, i) => (
+        <Card key={i} className="group relative overflow-hidden rounded-2xl border-border/40 bg-card/40 transition-colors hover:bg-card/60">
           <CardContent className="flex items-center gap-4 p-5">
             <div className={cn("rounded-xl bg-gradient-to-br p-2.5 transition-transform duration-300 group-hover:scale-105", s.gradient)}>
               <s.icon className={cn("h-5 w-5", s.iconColor)} />
@@ -470,13 +507,13 @@ function BrainStats({ memories, recalls }: { memories: Memory[]; recalls: number
           </CardContent>
         </Card>
       ))}
-    </section>
+    </div>
   );
 }
 
 /* ─── Mascot ──────────────────────────────────────────────── */
 
-function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
+function Mascot({ state, className = "w-24 h-24 md:w-32 md:h-32" }: { state: MascotState; className?: string }) {
   const [hovered, setHovered] = useState(false);
 
   const bubble: Record<MascotState, string> = {
@@ -491,15 +528,13 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
 
   return (
     <div
-      className="relative flex flex-col items-center"
+      className={cn("relative flex flex-col items-center", className)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className="relative flex items-center justify-center rounded-full"
+        className="relative flex items-center justify-center rounded-full w-full h-full"
         style={{
-          width: size,
-          height: size,
           background:
             state === "recall"
               ? "radial-gradient(circle, oklch(0.95 0.12 75 / 0.9), transparent 70%)"
@@ -507,16 +542,12 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
           transition: "background 400ms ease",
         }}
       >
-        <div className={hovered ? "animate-squash origin-bottom" : ""}>
+        <div className={cn("w-[92%] h-[92%]", hovered ? "animate-squash origin-bottom" : "")}>
           <img
             src={mascotSrc}
             alt="Déjà Vu mascot"
-            width={size}
-            height={size}
-            className={state === "idle" ? "animate-float" : ""}
+            className={cn("w-full h-full object-contain", state === "idle" ? "animate-float" : "")}
             style={{
-              width: size * 0.92,
-              height: size * 0.92,
               transform: bounce ? "translateY(-4px) scale(1.03)" : "translateY(0) scale(1)",
               transition: "transform 400ms cubic-bezier(0.2,0.9,0.3,1.3)",
               filter: glow
@@ -560,8 +591,8 @@ function Mascot({ state, size = 96 }: { state: MascotState; size?: number }) {
       <div
         key={hovered ? "hovered" : "unhovered"}
         className={cn(
-          "mt-2 rounded-full bg-card/80 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm backdrop-blur",
-          hovered && "animate-pop text-foreground",
+          "absolute -bottom-8 rounded-full bg-card/80 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm backdrop-blur whitespace-nowrap",
+          "animate-in fade-in slide-in-from-top-2 duration-300",
         )}
       >
         {bubble[state]}
@@ -697,17 +728,18 @@ function QuickAdd({
         </div>
 
         {/* Footer */}
-        <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
-          <span className="text-xs text-muted-foreground/70">
-            <kbd className="rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> to save ·{" "}
-            <kbd className="rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> newline
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-border/40 pt-4 gap-4 sm:gap-0">
+          <span className="text-[10px] sm:text-xs text-muted-foreground/70">
+            <kbd className="hidden sm:inline-block rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> <span className="hidden sm:inline">to save · </span>
+            <kbd className="hidden sm:inline-block rounded border border-border bg-muted/80 px-1.5 py-0.5 font-mono text-[10px]">Shift+Enter</kbd> <span className="hidden sm:inline">newline</span>
+            <span className="sm:hidden">Tap save to store locally</span>
           </span>
           <button
             onClick={onSubmit}
             disabled={value.trim().length < 3}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:opacity-90 active:scale-[0.97] disabled:opacity-30 disabled:shadow-none"
+            className="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 sm:py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:opacity-90 active:scale-[0.97] disabled:opacity-30 disabled:shadow-none"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Send className="h-3.5 w-3.5" />
             Save
           </button>
         </div>
