@@ -6,8 +6,10 @@
 
 @theme inline {
   --font-sans:
-    "Geist Sans", "Inter Variable", "Inter", "Segoe UI", system-ui, -apple-system,
+    "Space Grotesk", "Geist Sans", "Segoe UI", system-ui, -apple-system,
     BlinkMacSystemFont, sans-serif;
+  
+  --font-display: "Fraunces", "Geist Sans", serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -46,6 +48,7 @@
   --animate-float: float 3s ease-in-out infinite;
   --animate-pop: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --animate-squash: squash 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --animate-text-shimmer: textShimmer 8s linear infinite;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -280,7 +283,7 @@ html {
   h4,
   h5,
   h6 {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 750;
     letter-spacing: -0.03em;
     line-height: 1.1;
@@ -612,6 +615,15 @@ html {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes textShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: -200% 50%;
   }
 }
 
