@@ -391,7 +391,7 @@ function Index() {
                   />
                   Your personal memory assistant
                 </p>
-                <h1 className="text-hero">
+                <h1 className="text-hero font-display text-transparent bg-clip-text animate-text-shimmer" style={{ backgroundImage: "linear-gradient(110deg, #fff 45%, #fff 50%, rgba(255,255,255,0.3) 55%, #fff 60%)", backgroundSize: "200% auto" }}>
                   The memory that <span style={{ color: "var(--accent-orange)" }}>finds you</span>{" "}
                   before you ask.
                 </h1>
@@ -471,34 +471,40 @@ function Index() {
           />
 
           {/* ── Your Memories ────────────────────────────────── */}
-          <section className="mt-24 md:mt-40 mb-8 max-w-[1400px] mx-auto px-4 md:px-8" id="memories">
-            <div className="mb-12">
-              <h2 className="text-5xl md:text-[6rem] font-black tracking-tight leading-none mb-6" style={{ color: "var(--text)", letterSpacing: "-0.04em" }}>
-                Your memories
+          <section className="relative mt-24 md:mt-40 mb-8 max-w-[1400px] mx-auto px-4 md:px-8" id="memories">
+            {/* Glowing Orb Background */}
+            <div className="absolute top-[50px] left-1/2 md:left-[30%] -translate-x-1/2 w-[800px] h-[500px] pointer-events-none -z-10 mix-blend-screen">
+              <div className="w-full h-full bg-[rgba(255,109,41,0.08)] blur-[100px] rounded-full animate-glow-drift" />
+            </div>
+            
+            <div className="mb-12 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full">
+              <h2 className="text-5xl md:text-[5.5rem] font-black tracking-tighter leading-[0.95] mb-6 text-transparent bg-clip-text animate-text-shimmer drop-shadow-sm font-display" style={{ letterSpacing: "-0.04em", backgroundImage: "linear-gradient(110deg, #fff 45%, #fff 50%, rgba(255,255,255,0.3) 55%, #fff 60%)", backgroundSize: "200% auto" }}>
+                Your memories<span className="inline-block animate-float text-[var(--accent-orange)] opacity-80 ml-3 md:ml-4 font-sans font-light text-2xl md:text-4xl align-top" style={{ transform: 'translateY(-10px)' }}>✦</span>
               </h2>
-              <p className="text-lg md:text-xl font-medium tracking-wide" style={{ color: "var(--text-muted)" }}>
-                <span className="text-white">{memories.length}</span> SAVED · STORED LOCALLY ON THIS DEVICE
+              <p className="text-xs md:text-sm font-bold tracking-[0.25em] uppercase" style={{ color: "var(--text-muted)" }}>
+                <span className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] font-black text-sm md:text-base">{memories.length}</span> SAVED · STORED LOCALLY ON THIS DEVICE
               </p>
             </div>
 
-            <div className="mb-12 space-y-6 max-w-3xl">
+            <div className="mb-12 space-y-6 max-w-3xl relative z-10 mx-auto md:mx-0">
               <div className="relative group">
-                <Search
-                  className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 transition-colors duration-300"
-                  style={{ color: "var(--accent-orange)" }}
-                />
-                <input
-                  type="text"
-                  placeholder="Search memories..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0a0a0a] hover:bg-[#111] focus:bg-[#111] border focus:border-orange-500/50 outline-none transition-all duration-300 py-6 pl-16 pr-8 text-xl font-medium placeholder:text-neutral-600 rounded-3xl"
-                  style={{ 
-                    color: "var(--text)", 
-                    borderColor: "var(--border)",
-                    boxShadow: "inset 0 4px 10px rgba(0,0,0,0.5)"
-                  }}
-                />
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-[rgba(255,109,41,0.3)] to-transparent rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none"></div>
+                <div className="relative">
+                  <Search
+                    className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 transition-colors duration-300 drop-shadow-[0_0_8px_rgba(255,109,41,0.5)]"
+                    style={{ color: "var(--accent-orange)" }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search memories..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#0a0a0a]/60 backdrop-blur-xl hover:bg-[#111]/80 focus:bg-[#111]/90 border border-white/5 focus:border-[var(--accent-orange)] outline-none transition-all duration-500 py-6 pl-16 pr-8 text-xl font-medium placeholder:text-neutral-600 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.5)]"
+                    style={{ 
+                      color: "var(--text)"
+                    }}
+                  />
+                </div>
               </div>
 
               {allTags.length > 0 && (
@@ -544,9 +550,10 @@ function Index() {
           {/* ── FAQ ──────────────────────────────────────────── */}
           <FAQ />
 
-          {/* ── Footer ───────────────────────────────────────── */}
-          <Footer />
         </main>
+
+        {/* ── Footer ───────────────────────────────────────── */}
+        <Footer />
       </div>
 
       {/* ── Overlays ── (Outside boxed wrapper so they float over the black edges) ── */}
@@ -1520,9 +1527,14 @@ function HowItWorks({
   return (
     <section id="how-it-works" className="mt-24 mb-24 relative z-10">
       <ScrollReveal>
-        <div className="mb-16 text-center">
-          <h2 className="text-5xl md:text-[5.5rem] font-black tracking-tight leading-none mb-6" style={{ color: "var(--text)", letterSpacing: "-0.04em" }}>
-            How it works
+        <div className="mb-16 relative z-10 text-center flex flex-col items-center w-full">
+          {/* Glowing Orb Background */}
+          <div className="absolute top-[20px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] pointer-events-none -z-10 mix-blend-screen">
+            <div className="w-full h-full bg-[rgba(255,109,41,0.06)] blur-[100px] rounded-full animate-glow-drift" />
+          </div>
+          
+          <h2 className="text-5xl md:text-[5.5rem] font-black tracking-tighter leading-[0.95] mb-6 text-transparent bg-clip-text animate-text-shimmer drop-shadow-sm font-display" style={{ letterSpacing: "-0.04em", backgroundImage: "linear-gradient(110deg, #fff 45%, #fff 50%, rgba(255,255,255,0.3) 55%, #fff 60%)", backgroundSize: "200% auto" }}>
+            How it works<span className="inline-block animate-float text-[var(--accent-orange)] opacity-80 ml-3 md:ml-4 font-sans font-light text-2xl md:text-4xl align-top" style={{ transform: 'translateY(-10px)' }}>✦</span>
           </h2>
           <p className="text-lg md:text-xl font-bold tracking-[0.2em] uppercase" style={{ color: "var(--accent-orange)" }}>
             Two loops, zero friction
@@ -1548,7 +1560,7 @@ function HowItWorks({
                   >
                     {step.num}
                   </span>
-                  <h3 className="hiw-title mt-3 text-section-heading" style={{ color: "var(--text)" }}>
+                  <h3 className="hiw-title mt-3 text-section-heading font-display" style={{ color: "var(--text)" }}>
                     {step.title}
                   </h3>
                   <p className="hiw-desc mt-3 text-card-body leading-relaxed max-w-sm" style={{ color: "var(--text-muted)" }}>
@@ -1674,15 +1686,32 @@ function MemoryCoreIntro() {
       </div>
       
       <div className="relative flex flex-col items-center justify-center text-center">
-        {/* Glowing Core */}
-        <div className="memory-core-orb relative w-32 h-32 rounded-full mb-8 flex items-center justify-center" style={{ background: 'radial-gradient(circle at 30% 30%, #ff8c40, #ff4d00)' }}>
-           <div className="absolute inset-0 rounded-full border border-white/20 mix-blend-overlay" />
-           {/* Inner rings */}
-           <div className="absolute w-[150%] h-[150%] rounded-full border border-orange-500/30 opacity-50 animate-[spin_10s_linear_infinite]" />
-           <div className="absolute w-[200%] h-[200%] rounded-full border border-orange-500/10 opacity-50 animate-[spin_15s_linear_infinite_reverse]" />
+        {/* Glowing Core Container */}
+        <div className="relative mb-8 flex items-center justify-center">
+           {/* Segmented spinning rings with revolving planets */}
+           <div className="absolute w-[150%] h-[150%] rounded-full border border-orange-500/50 opacity-80 animate-[spin_8s_linear_infinite]" style={{ borderTopColor: 'transparent', borderLeftColor: 'transparent' }}>
+             <div className="absolute bottom-0 left-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_12px_#fff] -translate-x-1/2 translate-y-1/2" />
+           </div>
+           
+           <div className="absolute w-[200%] h-[200%] rounded-full border border-orange-500/30 opacity-80 animate-[spin_12s_linear_infinite_reverse]" style={{ borderRightColor: 'transparent', borderBottomColor: 'transparent' }}>
+             <div className="absolute top-0 left-1/2 w-1.5 h-1.5 rounded-full bg-orange-200 shadow-[0_0_8px_var(--accent-orange)] -translate-x-1/2 -translate-y-1/2" />
+           </div>
+           
+           <div className="absolute w-[250%] h-[250%] rounded-full border border-orange-500/15 opacity-80 animate-[spin_18s_linear_infinite]" style={{ borderLeftColor: 'transparent', borderBottomColor: 'transparent' }}>
+             <div className="absolute top-1/2 right-0 w-2.5 h-2.5 rounded-full bg-orange-400 shadow-[0_0_15px_var(--accent-orange)] translate-x-1/2 -translate-y-1/2" />
+           </div>
+           
+           {/* The Shiny Orb */}
+           <div className="memory-core-orb relative w-32 h-32 rounded-full overflow-hidden flex items-center justify-center animate-float shadow-[0_0_60px_rgba(255,109,41,0.6)]" style={{ background: 'radial-gradient(circle at 30% 30%, #ff8c40, #ff4d00)' }}>
+             {/* Sweeping Shimmer Reflection */}
+             <div className="absolute top-0 left-0 w-full h-full animate-text-shimmer mix-blend-overlay" style={{ backgroundImage: 'linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.9) 45%, rgba(255,255,255,0.9) 55%, transparent 80%)', backgroundSize: '200% auto' }} />
+             
+             {/* Glassy 3D rim lighting */}
+             <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: 'inset 0 4px 12px rgba(255,255,255,0.8), inset 0 -4px 12px rgba(0,0,0,0.4)' }} />
+           </div>
         </div>
         
-        <h3 className="text-4xl md:text-5xl font-bold tracking-tight mb-4" style={{ color: "var(--text)" }}>
+        <h3 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 font-display" style={{ color: "var(--text)" }}>
           Your External Brain
         </h3>
         <p className="text-lg max-w-md" style={{ color: "var(--text-muted)" }}>
@@ -1766,13 +1795,32 @@ function MemoryList({
         
         {/* Intro Panel (Scrolls away) */}
         <div className="w-[100vw] md:w-[45vw] shrink-0 h-full flex flex-col justify-center px-10 md:px-20 relative">
-          <div className="memory-core-orb relative w-32 h-32 rounded-full mb-8 flex items-center justify-center" style={{ background: 'radial-gradient(circle at 30% 30%, #ff8c40, #ff4d00)' }}>
-             <div className="absolute inset-0 rounded-full border border-white/20 mix-blend-overlay" />
-             <div className="absolute w-[150%] h-[150%] rounded-full border border-orange-500/30 opacity-50 animate-[spin_10s_linear_infinite]" />
-             <div className="absolute w-[200%] h-[200%] rounded-full border border-orange-500/10 opacity-50 animate-[spin_15s_linear_infinite_reverse]" />
+          {/* Glowing Core Container */}
+          <div className="relative mb-8 flex items-center justify-center">
+             {/* Segmented spinning rings with revolving planets */}
+             <div className="absolute w-[150%] h-[150%] rounded-full border border-orange-500/50 opacity-80 animate-[spin_8s_linear_infinite]" style={{ borderTopColor: 'transparent', borderLeftColor: 'transparent' }}>
+               <div className="absolute bottom-0 left-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_12px_#fff] -translate-x-1/2 translate-y-1/2" />
+             </div>
+             
+             <div className="absolute w-[200%] h-[200%] rounded-full border border-orange-500/30 opacity-80 animate-[spin_12s_linear_infinite_reverse]" style={{ borderRightColor: 'transparent', borderBottomColor: 'transparent' }}>
+               <div className="absolute top-0 left-1/2 w-1.5 h-1.5 rounded-full bg-orange-200 shadow-[0_0_8px_var(--accent-orange)] -translate-x-1/2 -translate-y-1/2" />
+             </div>
+             
+             <div className="absolute w-[250%] h-[250%] rounded-full border border-orange-500/15 opacity-80 animate-[spin_18s_linear_infinite]" style={{ borderLeftColor: 'transparent', borderBottomColor: 'transparent' }}>
+               <div className="absolute top-1/2 right-0 w-2.5 h-2.5 rounded-full bg-orange-400 shadow-[0_0_15px_var(--accent-orange)] translate-x-1/2 -translate-y-1/2" />
+             </div>
+             
+             {/* The Shiny Orb */}
+             <div className="memory-core-orb relative w-32 h-32 rounded-full overflow-hidden flex items-center justify-center animate-float shadow-[0_0_60px_rgba(255,109,41,0.6)]" style={{ background: 'radial-gradient(circle at 30% 30%, #ff8c40, #ff4d00)' }}>
+               {/* Sweeping Shimmer Reflection */}
+               <div className="absolute top-0 left-0 w-full h-full animate-text-shimmer mix-blend-overlay" style={{ backgroundImage: 'linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.9) 45%, rgba(255,255,255,0.9) 55%, transparent 80%)', backgroundSize: '200% auto' }} />
+               
+               {/* Glassy 3D rim lighting */}
+               <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: 'inset 0 4px 12px rgba(255,255,255,0.8), inset 0 -4px 12px rgba(0,0,0,0.4)' }} />
+             </div>
           </div>
           
-          <h2 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 leading-tight" style={{ color: "var(--text)" }}>
+          <h2 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 leading-tight font-display" style={{ color: "var(--text)" }}>
             Your External Brain
           </h2>
           <p className="text-xl max-w-md leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -1958,10 +2006,16 @@ function MemoryCard({
           </div>
         ) : (
           <p
-            className="text-2xl md:text-3xl font-medium leading-tight whitespace-pre-wrap"
+            className={cn(
+              "font-medium whitespace-pre-wrap overflow-hidden text-ellipsis",
+              memory.content.length < 50 ? "text-4xl leading-tight tracking-tighter" : "text-xl md:text-2xl leading-relaxed tracking-tight"
+            )}
             style={{ 
-              color: "var(--text)", 
-              letterSpacing: "-0.03em"
+              color: "rgba(255, 255, 255, 0.9)", 
+              letterSpacing: "-0.02em",
+              display: "-webkit-box",
+              WebkitLineClamp: memory.content.length < 50 ? 4 : 8,
+              WebkitBoxOrient: "vertical"
             }}
           >
             {memory.content}
@@ -1997,12 +2051,17 @@ function FeaturesGrid() {
   return (
     <section id="features" className="mt-24 max-w-[1400px] mx-auto px-4 md:px-8 mb-24">
       <ScrollReveal>
-        <div className="mb-16 text-left md:text-center max-w-2xl mx-auto">
+        <div className="mb-16 relative z-10 text-center max-w-2xl mx-auto flex flex-col items-center w-full">
+          {/* Glowing Orb Background */}
+          <div className="absolute top-[20px] left-1/2 -translate-x-1/2 w-[800px] h-[400px] pointer-events-none -z-10 mix-blend-screen">
+            <div className="w-full h-full bg-[rgba(255,109,41,0.06)] blur-[100px] rounded-full animate-glow-drift" />
+          </div>
+          
           <p className="text-ui-label mb-3 uppercase tracking-wider font-semibold" style={{ color: "var(--accent-orange)" }}>
             Features
           </p>
-          <h2 className="text-5xl md:text-6xl font-bold tracking-tight mb-4" style={{ color: "var(--text)" }}>
-            Designed for deep work
+          <h2 className="text-5xl md:text-[5.5rem] font-black tracking-tighter leading-[0.95] mb-4 text-transparent bg-clip-text animate-text-shimmer drop-shadow-sm font-display" style={{ letterSpacing: "-0.04em", backgroundImage: "linear-gradient(110deg, #fff 45%, #fff 50%, rgba(255,255,255,0.3) 55%, #fff 60%)", backgroundSize: "200% auto" }}>
+            Designed for deep work<span className="inline-block animate-float text-[var(--accent-orange)] opacity-80 ml-3 md:ml-4 font-sans font-light text-2xl md:text-4xl align-top" style={{ transform: 'translateY(-10px)' }}>✦</span>
           </h2>
         </div>
       </ScrollReveal>
@@ -2021,7 +2080,7 @@ function FeaturesGrid() {
               </div>
             </div>
             <div className="relative z-10 mt-auto">
-              <h3 className="text-4xl md:text-[2.75rem] font-bold tracking-tight mb-4 leading-[1.1]" style={{ color: "var(--text)" }}>
+              <h3 className="text-4xl md:text-[2.75rem] font-bold tracking-tight mb-4 leading-[1.1] font-display" style={{ color: "var(--text)" }}>
                 Ctrl+O to outcome
               </h3>
               <p className="text-lg leading-relaxed text-balance" style={{ color: "var(--text-muted)" }}>
@@ -2041,7 +2100,7 @@ function FeaturesGrid() {
               </div>
             </div>
             <div className="relative z-10 mt-auto">
-              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1]" style={{ color: "var(--text)" }}>
+              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1] font-display" style={{ color: "var(--text)" }}>
                 Understand the screen
               </h3>
               <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -2058,7 +2117,7 @@ function FeaturesGrid() {
               </div>
             </div>
             <div className="relative z-10 mt-auto">
-              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1]" style={{ color: "var(--text)" }}>
+              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1] font-display" style={{ color: "var(--text)" }}>
                 Revise live
               </h3>
               <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -2078,7 +2137,7 @@ function FeaturesGrid() {
               </div>
             </div>
             <div className="relative z-10 mt-auto">
-              <h3 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 leading-[1.1]" style={{ color: "var(--text)" }}>
+              <h3 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 leading-[1.1] font-display" style={{ color: "var(--text)" }}>
                 Local-first Privacy
               </h3>
               <p className="text-lg leading-relaxed text-balance" style={{ color: "var(--text-muted)" }}>
@@ -2095,7 +2154,7 @@ function FeaturesGrid() {
               </div>
             </div>
             <div className="relative z-10 mt-auto">
-              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1]" style={{ color: "var(--text)" }}>
+              <h3 className="text-3xl font-bold tracking-tight mb-2 leading-[1.1] font-display" style={{ color: "var(--text)" }}>
                 Infinite Memory
               </h3>
               <p className="text-base leading-relaxed text-balance" style={{ color: "var(--text-muted)" }}>
@@ -2171,9 +2230,14 @@ function FAQ() {
     <section id="faq" className="w-full py-32 mt-12">
       <div className="max-w-[1200px] mx-auto px-4 md:px-8">
         <ScrollReveal>
-          <div className="mb-16 text-center">
-            <h2 className="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight mb-6 leading-none" style={{ color: "var(--text)", letterSpacing: "-0.04em" }}>
-              Frequently Asked<br/>Questions
+          <div className="mb-16 relative z-10 text-center flex flex-col items-center w-full">
+            {/* Glowing Orb Background */}
+            <div className="absolute top-[20px] left-1/2 -translate-x-1/2 w-[800px] h-[500px] pointer-events-none -z-10 mix-blend-screen">
+              <div className="w-full h-full bg-[rgba(255,109,41,0.06)] blur-[100px] rounded-full animate-glow-drift" />
+            </div>
+            
+            <h2 className="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tighter leading-[0.95] mb-6 text-transparent bg-clip-text animate-text-shimmer drop-shadow-sm font-display" style={{ letterSpacing: "-0.04em", backgroundImage: "linear-gradient(110deg, #fff 45%, #fff 50%, rgba(255,255,255,0.3) 55%, #fff 60%)", backgroundSize: "200% auto" }}>
+              Frequently Asked<br/>Questions<span className="inline-block animate-float text-[var(--accent-orange)] opacity-80 ml-3 md:ml-4 font-sans font-light text-2xl md:text-4xl align-top" style={{ transform: 'translateY(-10px)' }}>✦</span>
             </h2>
             <p className="text-lg md:text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: "var(--text-muted)" }}>
               Everything you need to know before using Déjà Vu, from local storage architecture to semantic similarity algorithms.
@@ -2183,7 +2247,7 @@ function FAQ() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {items.map((item, i) => (
-            <ScrollReveal key={i} delay={i * 50}>
+            <ScrollReveal key={i} delay={i * 0.05}>
               <div 
                 className="group transition-colors rounded-[2rem] overflow-hidden cursor-pointer"
                 style={{ background: "var(--card)", border: "1px solid var(--border)" }}
@@ -2233,52 +2297,109 @@ function Footer() {
 
   return (
     <motion.footer
-      className="mt-24 pb-8 pt-8"
-      style={{ borderTop: "1px solid var(--line)" }}
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
+      className="relative z-10 w-full overflow-hidden mt-0 pb-0 bg-[#0d0d0d]"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={revealViewport}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.5, ease: revealEase }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: revealEase }}
     >
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 sm:flex-row sm:justify-between">
-        <div
-          className="group flex items-center gap-3 cursor-pointer"
-          onClick={() => window.scrollTo(0, 0)}
-        >
-          <div
-            className="dv-logo-badge overflow-hidden flex items-center justify-center transition-all duration-300 group-hover:bg-[rgba(255,109,41,0.15)]"
-            style={{ width: 36, height: 36, borderRadius: "50%" }}
-          >
-            <img
-              src={mascotSrc}
-              alt=""
-              className="relative z-10 w-7 h-7 drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12"
-            />
+      {/* Background Image with Theme Gradient Overlay */}
+      <div 
+        className="absolute inset-0 z-0 mix-blend-screen opacity-50"
+        style={{ 
+          backgroundImage: "url('/footer-bg.png')",
+          backgroundSize: "cover", 
+          backgroundPosition: "center top",
+          filter: "saturate(0.5) contrast(1.2)"
+        }}
+      />
+      
+      {/* Gradients to blend pink/purple flowers into our dark/orange theme */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#0d0d0d] via-transparent to-[#0d0d0d]/80" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#0d0d0d] via-black/80 to-transparent" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_bottom,rgba(255,109,41,0.2)_0%,transparent_70%)]" />
+
+      {/* Content Container */}
+      <div className="relative z-10 mx-auto max-w-[1400px] px-8 pt-32 pb-16">
+        
+        {/* 4 Column Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-32">
+          
+          {/* Brand Column */}
+          <div className="md:col-span-4 flex flex-col items-start">
+            <div className="group flex items-center gap-3 mb-8 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+              <div className="dv-logo-badge overflow-hidden flex items-center justify-center bg-[rgba(255,109,41,0.15)] transition-all duration-300 group-hover:bg-[rgba(255,109,41,0.25)] w-10 h-10 rounded-lg">
+                <img src={mascotSrc} alt="Deja Vu" className="relative z-10 w-7 h-7 drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-white transition-colors">Déjà Vu</span>
+            </div>
+            
+            <h3 className="text-[2rem] font-bold tracking-tight text-white mb-6 font-display leading-[1.1]">
+              The memory that finds you before you ask.
+            </h3>
+            
+            <p className="text-base text-white/60 mb-8 leading-relaxed max-w-sm">
+              Déjà Vu turns your notes, screen context, research, app actions, and generated work into one beautifully indexed external brain.
+            </p>
+            
+            <button className="bg-white text-black hover:bg-neutral-200 px-6 py-3 rounded-full font-medium transition-all group flex items-center gap-2 shadow-md">
+              Get early access 
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </button>
+            
+            <div className="mt-16 text-sm text-white/40 space-y-3 font-medium">
+              <p>© 2026 Déjà Vu - All rights reserved</p>
+              <div className="flex items-center gap-2">
+                Built with care, stored locally 
+                <a
+                  href="https://github.com/Nakshatra05/Deja-Vu-Memories"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-white"
+                >
+                  <Github className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
           </div>
-          <span
-            className="text-lg font-bold transition-colors group-hover:text-white"
-            style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
-          >
-            Déjà Vu
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-[13px]" style={{ color: "var(--text-muted)" }}>
-          <span>Built with care, stored locally</span>
-          <a
-            href="https://github.com/Nakshatra05/Deja-Vu-Memories"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors"
-            style={{ color: "var(--text-muted)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-muted)";
-            }}
-          >
-            <Github className="h-4 w-4" />
-          </a>
+          
+          {/* Menu Column */}
+          <div className="md:col-span-2 md:col-start-6">
+            <h4 className="text-white font-bold mb-6 text-lg tracking-tight">Menu</h4>
+            <ul className="space-y-4 text-white/60 font-medium">
+              <li><a href="#" className="hover:text-white transition-colors">Home</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Updates</a></li>
+            </ul>
+          </div>
+          
+          {/* Navigation Column */}
+          <div className="md:col-span-2">
+            <h4 className="text-white font-bold mb-6 text-lg tracking-tight">Navigation</h4>
+            <ul className="space-y-4 text-white/60 font-medium">
+              <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Roadmap</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Privacy policy</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Terms of service</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Customer portal</a></li>
+            </ul>
+          </div>
+          
+          {/* More Products Column */}
+          <div className="md:col-span-3">
+            <h4 className="text-white font-bold mb-6 text-lg tracking-tight">More products</h4>
+            <ul className="space-y-4 text-white/60 font-medium">
+              <li><a href="#" className="hover:text-white transition-colors">Source Discovery</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Agent Canvas</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Notion Writer</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Connected Apps</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Cerebras Speed</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Live Task Graph</a></li>
+            </ul>
+          </div>
+          
         </div>
       </div>
     </motion.footer>
